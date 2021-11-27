@@ -1,0 +1,2 @@
+# CactusCoin
+Discord Currency Bot 
