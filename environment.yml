@@ -1,0 +1,7 @@
+name: CactusCoin
+dependencies:
+  - python=3.8
+  - pip
+  - pyyaml
+  - pip:
+    - git+https://github.com/Rapptz/discord.py

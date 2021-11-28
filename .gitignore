@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+#####################################################################
+# Configuration
+.idea
+src/main
+config.yml
+planning.txt
