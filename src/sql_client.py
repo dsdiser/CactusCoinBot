@@ -1,6 +1,7 @@
 import sqlite3
 import atexit
 import config
+import signal
 
 
 try:
@@ -10,9 +11,10 @@ except sqlite3.Error as e:
     print(e)
 
 
-def closeDB():
+def handle_exit():
     if connection:
         connection.close()
 
-
-atexit.register(closeDB)
+atexit.register(handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
+signal.signal(signal.SIGINT, handle_exit)

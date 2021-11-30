@@ -2,6 +2,25 @@ import discord
 import config
 import sql_client as sql
 import logging
+from io import BytesIO
+from PIL import Image, ImageDraw
+import os
+import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import datetime
+
+plt.style.use("dark_background")
+for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
+    plt.rcParams[param] = '0.9'  # very light grey
+for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
+    plt.rcParams[param] = '#212946'  # bluish dark grey
+plt.rcParams["font.family"] = "Tahoma"
+plt.rcParams["font.size"] = 16
+
+icon_size = (44, 44)
+icon_mask = Image.new('L', icon_size)
+mask_draw = ImageDraw.Draw(icon_mask)
+mask_draw.ellipse((0, 0, icon_size[0], icon_size[1]), fill=255)
 
 # Checks admin status for a member for specific admin only functionality.
 def is_admin(member: discord.Member):
@@ -67,6 +86,87 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int):
     await update_role(guild, member, current_coin)
 
 
+# Computes power rankings for the server and outputs them in a bar graph in an image
+async def compute_rankings(guild: discord.Guild):
+    # get all coin amounts
+    rankings = get_coin_rankings()
+    # pull all images of ranking members from discord
+    memberIcons = []
+    memberNames = []
+    memberAmounts = []
+    memberColor = []
+    storedIcons = os.listdir('../tmp')
+    for memberid, amount in rankings:
+        member = guild.get_member(memberid)
+        if not member:
+            return
+        icon = member.display_avatar
+        # check if we already have the file in tmp folder
+        if icon.key in storedIcons:
+            path = f'../tmp/{icon.key}.png'
+            img = Image.open(path)
+        else:
+            img = Image.open(BytesIO(await icon.read()))
+            img = img.resize((128, 128))
+            img.save(f'../tmp/{icon.key}.png')
+            img = img.resize(icon_size)
+            img.putalpha(icon_mask)
+            img.save(f'../tmp/{icon.key}-44px.png')
+
+        memberIcons.append(f'../tmp/{icon.key}-44px.png')
+        memberNames.append(member.display_name)
+        memberAmounts.append(amount)
+        # alternate bar color generation
+        # im = img.resize((1, 1), Image.NEAREST).convert('RGB')
+        # color = im.getpixel((0, 0))
+        # normalize pixel values between 0 and 1
+        memberC = member.color if member.color != discord.Color.default() or member.color != discord.Color.from_rgb(1, 1, 1) else discord.Color.blurple()
+        color = (memberC.r, memberC.g, memberC.b)
+        memberColor.append(tuple(t/255. for t in color))
+    ax = plt.axes()
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(color='.9', linestyle='dashed')
+    ax.xaxis.grid(color='.9', linestyle='dashed')
+
+    # plot chart
+    height = .8
+    p1 = plt.barh(memberNames, memberAmounts, height=height, color=memberColor)
+
+    # create a glowy effect on the plot
+    n_shades = 10
+    diff_linewidth = .05
+    alpha_value = 0.3 / n_shades
+    for n in range(1, n_shades + 1):
+        plt.barh(memberNames, memberAmounts,
+                height=height + (diff_linewidth * n),
+                alpha=alpha_value,
+                color=memberColor)
+
+    today = datetime.date.today().strftime("%m-%d-%Y")
+    plt.title('Cactus Gang Power Rankings for ' + today, fontweight='bold')
+    plt.xlabel('Coin ($)')
+    # add user icons to bar charts
+    max_value = max(memberAmounts)
+    for i, (label, value, icon) in enumerate(zip(memberNames, memberAmounts, memberIcons)):
+        offset_image(value, i, icon, bar_is_too_short=value < max_value / 10, ax=ax)
+
+    plt.savefig(f'../tmp/power-rankings-{today}.png', bbox_inches='tight', pad_inches=.5)
+
+
+# Adds discord icons to bar chart
+def offset_image(x, y, icon, bar_is_too_short, ax):
+    img = plt.imread(icon)
+    im = OffsetImage(img, zoom=0.65)
+    im.image.axes = ax
+    x_offset = -25
+    if bar_is_too_short:
+        x = 0
+    ab = AnnotationBbox(im, (x, y), xybox=(x_offset, 0), frameon=False,
+                        xycoords='data', boxcoords="offset points", pad=0)
+    ax.add_artist(ab)
+
+
+
 #############################################################
 # SQL functions for updating
 def update_coin(memberid: int, amount: int):
@@ -82,4 +182,11 @@ def get_coin(memberid: int):
     amount = cur.execute("SELECT coin from AMOUNTS WHERE id IS '{0}'".format(memberid)).fetchall()
     if amount:
         return amount[0][0]
+    return None
+
+def get_coin_rankings():
+    cur = sql.connection.cursor()
+    amounts = cur.execute("SELECT id, coin from AMOUNTS ORDER BY coin").fetchall()
+    if amounts:
+        return amounts
     return None

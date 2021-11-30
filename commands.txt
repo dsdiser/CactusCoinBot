@@ -1,4 +1,0 @@
-!help
-!give
-!bet
-!verifycoin

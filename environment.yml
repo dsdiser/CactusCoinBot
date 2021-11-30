@@ -3,6 +3,8 @@ dependencies:
   - python=3.8
   - pip
   - pyyaml
+  - pillow
+  - matplotlib
   - pip:
     - git+https://github.com/Rapptz/discord.py
     - pyspellchecker

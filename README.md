@@ -12,7 +12,7 @@ conda create -f environment.yml
 or to update existing install:
 
 ```commandline
-conda env update -f envinronment.yml --prune
+conda env update -f environment.yml --prune
 ```
 
 ## Commands

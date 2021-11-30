@@ -12,9 +12,10 @@ class ConfirmBet(discord.ui.View):
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user.id == self.memberId:
-            # await interaction.response.send_message(interaction.user.mention + ' has declined the bet.', ephemeral=True)
             self.value = False
             self.stop()
+        else:
+            await interaction.response.send_message('Hey this is not your decision to make.', ephemeral=True)
 
     # When the confirm button is pressed, set the inner value to `True` and
     # stop the View from listening to more input.
@@ -22,10 +23,10 @@ class ConfirmBet(discord.ui.View):
     @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
     async def confirm(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user.id == self.memberId:
-            # await interaction.response.send_message(interaction.user.mention + ' has accepted the bet.', ephemeral=True)
             self.value = True
             self.stop()
-
+        else:
+            await interaction.response.send_message('Hey this is not your decision to make.', ephemeral=True)
 
 # Button prompts that let members decide who won the bet
 class DecideBetOutcome(discord.ui.View):
@@ -60,6 +61,10 @@ class DecideBetOutcome(discord.ui.View):
         elif self.member1choice and self.member2choice and self.member1choice != self.member2choice and interaction.user.id != self.member1.id and interaction.user.id != self.member2.id:
             self.winner = self.member1.id
             self.stop()
+        elif self.member1choice and self.member2choice and self.member1choice != self.member2choice:
+            await interaction.response.send_message('Winner chosen, but there is a conflict. Have a third party vote to solve this dispute.', ephemeral=True)
+        else:
+            await interaction.response.send_message('Winner chosen, waiting for other party...', ephemeral=True)
 
 
     # Choose the bet outcome as member2
@@ -77,5 +82,10 @@ class DecideBetOutcome(discord.ui.View):
         elif self.member1choice and self.member2choice and self.member1choice != self.member2choice and interaction.user.id != self.member1.id and interaction.user.id != self.member2.id:
             self.winner = self.member2.id
             self.stop()
+        elif self.member1choice and self.member2choice and self.member1choice != self.member2choice:
+            await interaction.response.send_message('Winner chosen, but there is a conflict. Have a third party vote to solve this dispute.', ephemeral=True)
+        else:
+            await interaction.response.send_message('Winner chosen, waiting for other party...', ephemeral=True)
+
 
 
