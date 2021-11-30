@@ -18,8 +18,8 @@ conda env update -f environment.yml --prune
 ## Commands
 This section is unfinished.
 
-##Deployment
+## Deployment
 Secrets are currently stored in config.yml, and should contain the following fields:
 
 * serverId
-* channelId
+* channelName
