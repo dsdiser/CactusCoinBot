@@ -13,16 +13,19 @@ logging.basicConfig(stream=sys.stderr, level=config.getAttribute('logLevel'))
 
 userCommands = {
     '!help': 'Usage: `!help` \n Outputs this list of commands.',
+    '!debtlimit': 'Usage: `!debtlimit` \n Outputs the max amount of coin someone can go into debt.',
     '!verifycoin': 'Usage: `!verifycoin [user1] [user2] [user3]` \n Updates the user\'s role with their current amount or the default starting amount of coin.',
     '!give': 'Usage: `!give [user] [amount]` \n Gives coin to a specific user, no strings attached.',
     '!bet': 'Usage: `!bet [user] [amount] [reason]` \n Starts a bet instance with another member, follow the button prompts to complete the bet.',
-    '!rankings': 'Usage: `!rankings` \n Outputs power rankings for the server.'
+    '!wheel': 'Usage: `!wheel [amount]` \n Starts a wheel instance where each player buys in with the stated amount and winner takes all.',
+    '!rankings': 'Usage: `!rankings` \n Outputs power rankings for the server.',
+    '!brokecheck': 'Usage: `!brokecheck [user]` \n Checks a member\'s poverty level.',
 }
 
 adminCommands = {
     '!adminhelp': 'Usage: `!adminhelp` \n Outputs this list of commands.',
     '!adminadjust': 'Usage: `!adminadjust [user] [amount]` \n Adds/subtracts coin from user\'s wallet.',
-    '!clear': 'Usage: `!clear [user]` \n Clears a user\'s wallet of all coin.',
+    '!clear': 'Usage: `!clear [user]` \n Clears a user\'s wallet of all coin and removes coin role.',
     '!reset': 'Usage: `!reset [user]` \n Resets a user\'s wallet to the default starting amount',
     '!balance': 'Usage: `!balance [user]` \n Outputs a user\'s wallet amount stored in the database.'
 }
@@ -65,49 +68,34 @@ class Client(discord.Client):
                     await commands.verify_coin(guild, member)
                 await message.reply('Verified coin for: ' + ', '.join([mention.display_name for mention in message.mentions]))
             else:
-                await message.reply('No mentions found. Follow the format: !verifycoin @user1 @user2 ...')
-
-        elif message.content.startswith('!adminadjust') and commands.is_admin(message.author):
-            messageContent = message.content.split()
-            print(messageContent)
-            if message.mentions and len(messageContent) == 3 and messageContent[2].lstrip('-').isnumeric():
-                recieving_member = message.mentions[0]
-                amount = int(messageContent[2])
-                await commands.add_coin(guild, recieving_member, amount)
-            else:
-                await message.reply('Error parsing. Follow the format: !adminadjust @user ####')
-
-        elif message.content.startswith('!clear') and commands.is_admin(message.author):
-            if message.mentions:
-                recieving_member = message.mentions[0]
-                amount = commands.get_coin(recieving_member.id)
-                await commands.add_coin(guild, recieving_member, -(amount - 1000))
-                await commands.update_role(guild, recieving_member, config.getAttribute('defaultCoin'))
-            else:
-                await message.reply('Error parsing. Follow the format: !clear @user')
-
-        elif message.content.startswith('!balance') and commands.is_admin(message.author):
-            if message.mentions:
-                recieving_member = message.mentions[0]
-                balance = commands.get_coin(recieving_member.id)
-                if balance:
-                    await message.reply(f'{recieving_member.display_name}\'s balance: {str(balance)}.')
-                else:
-                    await message.reply(f'{recieving_member.display_name} has no balance.')
-            else:
-                await message.reply('Error parsing. Follow the format: !balance @user')
+                await message.reply('No mentions found. Follow the format: `!verifycoin [user1] [user2] ...`')
 
         elif message.content.startswith('!rankings'):
             filePath = await commands.compute_rankings(message.guild)
             file = discord.File(f'../tmp/power-rankings-{datetime.date.today().strftime("%m-%d-%Y")}.png')
             await message.channel.send('Here are the current power rankings:', file=file)
 
+        elif message.content.startswith('!debtlimit'):
+            await message.channel.send(f'The current debt limit is {config.getAttribute("debtLimit")}.')
+
+        elif message.content.startswith('!brokecheck'):
+            if message.mentions:
+                target_member = message.mentions[0]
+                target_member_coin = commands.get_coin(target_member.id)
+                if target_member_coin <= 0:
+                    await message.channel.send(f'{target_member.display_name} is p <:OMEGALUL:392149610593779724> <:OMEGALUL:392149610593779724> r')
+                else:
+                    await message.channel.send(f'{target_member.display_name} isn\'t poor (yet)')
+
         elif message.content.startswith('!give'):
             messageContent = message.content.split()
             if message.mentions and len(messageContent) == 3 and messageContent[2].lstrip('-').isnumeric():
                 recieving_member = message.mentions[0]
                 amount = int(messageContent[2])
-                if recieving_member.id == message.author.id:
+                author_coin = commands.get_coin(message.author.id)
+                if author_coin - amount < config.getAttribute('debtLimit'):
+                    await message.reply('You don\'t have this much coin to give <:sadge:763188455248887819>')
+                elif recieving_member.id == message.author.id:
                     await message.reply('Are you stupid or something?')
                 elif amount > 0:
                     await commands.add_coin(guild, recieving_member, amount)
@@ -115,16 +103,22 @@ class Client(discord.Client):
                 elif amount < 0:
                     await message.reply('Nice try <:shanechamp:910353567603384340>')
             else:
-                await message.reply('Error parsing. Follow the format: !give @user ####')
+                await message.reply('Error parsing command. Follow the format: `!give [user] [amount]`')
 
         elif message.content.startswith('!bet'):
             messageContent = message.content.split(sep=None, maxsplit=3)
             if message.mentions and len(messageContent) == 4 and messageContent[2].lstrip('-').isnumeric():
                 recieving_member = message.mentions[0]
+                recieving_member_coin = commands.get_coin(recieving_member.id)
+                initiating_member_coin = commands.get_coin(message.author.id)
                 amount = int(messageContent[2])
-                if recieving_member.id == message.author.id:
+                if recieving_member_coin - amount < config.getAttribute('debtLimit'):
+                    await message.channel.send(f'{recieving_member.display_name} doesn\'t have enough to bet <:OMEGALUL:392149610593779724>')
+                elif initiating_member_coin - amount < config.getAttribute('debtLimit'):
+                    await message.reply('You don\'t even have enough to bet <:OMEGALUL:392149610593779724>')
+                elif recieving_member.id == message.author.id:
                     await message.reply('Are you stupid or something?')
-                if amount < 0:
+                elif amount < 0:
                     await message.reply('Nice try <:shanechamp:910353567603384340>')
                 elif amount > 0:
                     # Have the challenged member confirm the bet
@@ -153,10 +147,57 @@ class Client(discord.Client):
                                 f'{winner.display_name} won the ${str(amount)} bet against {loser.display_name} for "{messageContent[3]}"!',
                                 view=None)
                             await commands.add_coin(guild, winner, amount)
-                            await commands.add_coin(guild, loser, -amount )
+                            await commands.add_coin(guild, loser, -amount)
 
             else:
-                await message.reply('Error parsing. Follow the format: !bet @user #### reason here')
+                await message.reply('Error parsing command. Follow the format: `!bet [user] [amount] [reason]`')
+
+        elif message.content.startswith('!adminadjust') and commands.is_admin(message.author):
+            messageContent = message.content.split()
+            if message.mentions and len(messageContent) == 3 and messageContent[2].lstrip('-').isnumeric():
+                recieving_member = message.mentions[0]
+                amount = int(messageContent[2])
+                await commands.add_coin(guild, recieving_member, amount)
+            else:
+                await message.reply('Error parsing command. Follow the format: `!adminadjust [user] [amount]`')
+
+        elif message.content.startswith('!reset') and commands.is_admin(message.author):
+            if message.mentions:
+                recieving_member = message.mentions[0]
+                amount = commands.get_coin(recieving_member.id)
+                await commands.add_coin(guild, recieving_member, -(amount - config.getAttribute('defaultCoin')))
+                await commands.update_role(guild, recieving_member, config.getAttribute('defaultCoin'))
+            else:
+                await message.reply('Error parsing command. Follow the format: `!reset [user]`')
+
+        elif message.content.startswith('!clear') and commands.is_admin(message.author):
+            if message.mentions:
+                recieving_member = message.mentions[0]
+                commands.remove_coin(recieving_member.id)
+                await commands.remove_role(guild, recieving_member)
+            else:
+                await message.reply('Error parsing command. Follow the format: `!clear [user]`')
+
+        elif message.content.startswith('!balance') and commands.is_admin(message.author):
+            if message.mentions:
+                recieving_member = message.mentions[0]
+                balance = commands.get_coin(recieving_member.id)
+                if balance:
+                    await message.reply(f'{recieving_member.display_name}\'s balance: {str(balance)}.')
+                else:
+                    await message.reply(f'{recieving_member.display_name} has no balance.')
+            else:
+                await message.reply('Error parsing command. Follow the format: `!balance [user]`')
+
+        elif message.content.startswith('!hardreset') and commands.is_dev(message.author):
+            # BE CAREFUL WITH THIS
+            output = ''
+            for member in guild.members:
+                coin = commands.get_coin(member.id)
+                commands.remove_coin(member.id)
+                await commands.remove_role(guild, member)
+                output += member.display_name + ' - ' + str(coin) + '\n'
+            await message.reply('Everything cleared out...here\'s the short history.\n' + output)
 
         # Can't parse command, reply best guess
         elif message.content.startswith('!'):
