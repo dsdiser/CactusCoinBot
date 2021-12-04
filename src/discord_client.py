@@ -14,10 +14,10 @@ logging.basicConfig(stream=sys.stderr, level=config.getAttribute('logLevel'))
 userCommands = {
     '!help': 'Usage: `!help` \n Outputs this list of commands.',
     '!debtlimit': 'Usage: `!debtlimit` \n Outputs the max amount of coin someone can go into debt.',
-    '!verifycoin': 'Usage: `!verifycoin [user1] [user2] [user3]` \n Updates the user\'s role with their current amount or the default starting amount of coin.',
+    '!setup': 'Usage: `!setup [user1] [user2] [user3]` \n Updates the user\'s role with their current amount or the default starting amount of coin if no record exists.',
     '!give': 'Usage: `!give [user] [amount]` \n Gives coin to a specific user, no strings attached.',
     '!bet': 'Usage: `!bet [user] [amount] [reason]` \n Starts a bet instance with another member, follow the button prompts to complete the bet.',
-    '!wheel': 'Usage: `!wheel [amount]` \n Starts a wheel instance where each player buys in with the stated amount and winner takes all.',
+    '!wheel': 'Usage: `!wheel [amount]` \n Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
     '!rankings': 'Usage: `!rankings` \n Outputs power rankings for the server.',
     '!brokecheck': 'Usage: `!brokecheck [user]` \n Checks a member\'s poverty level.',
 }
@@ -62,13 +62,13 @@ class Client(discord.Client):
         elif 'deez' in message.content:
             await message.reply('Deez nuts')
 
-        elif message.content.startswith('!verifycoin'):
+        elif message.content.startswith('!setup'):
             if message.mentions:
                 for member in message.mentions:
                     await commands.verify_coin(guild, member)
-                await message.reply('Verified coin for: ' + ', '.join([mention.display_name for mention in message.mentions]))
+                await message.channel.send('Verified coin for: ' + ', '.join([mention.display_name for mention in message.mentions]))
             else:
-                await message.reply('No mentions found. Follow the format: `!verifycoin [user1] [user2] ...`')
+                await message.reply('No mentions found. Follow the format: `!setup [user1] [user2] ...`')
 
         elif message.content.startswith('!rankings'):
             filePath = await commands.compute_rankings(message.guild)

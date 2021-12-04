@@ -19,9 +19,9 @@ plt.rcParams['font.family'] = 'Tahoma'
 plt.rcParams['font.size'] = 16
 
 icon_size = (44, 44)
-icon_mask = Image.new('L', icon_size)
+icon_mask = Image.new('L', (128, 128))
 mask_draw = ImageDraw.Draw(icon_mask)
-mask_draw.ellipse((0, 0, icon_size[0], icon_size[1]), fill=255)
+mask_draw.ellipse((0, 0, 128, 128), fill=255)
 
 
 # Checks admin status for a member for specific admin only functionality.
@@ -115,12 +115,13 @@ async def compute_rankings(guild: discord.Guild):
             return
         icon = member.display_avatar
         # check if we already have the file in tmp folder
-        if f'../tmp/{icon.key}-44px.png' not in storedIcons:
+        print(storedIcons)
+        if f'{icon.key}-44px.png' not in storedIcons:
             img = Image.open(BytesIO(await icon.read()))
             img = img.resize((128, 128))
             img.save(f'../tmp/{icon.key}.png')
-            img = img.resize(icon_size)
             img.putalpha(icon_mask)
+            img = img.resize(icon_size)
             img.save(f'../tmp/{icon.key}-44px.png')
             img.close()
 
