@@ -38,6 +38,7 @@ def is_dev(member: discord.Member):
         return True
     return False
 
+
 # Creates a cactus coin role that denotes the amount of coin a member has.
 async def create_role(guild: discord.Guild, amount: int):
     # avoid duplicating roles whenever possible
@@ -49,7 +50,7 @@ async def create_role(guild: discord.Guild, amount: int):
 
 
 # Removes the cactus coin role from the member's role and from the guild if necessary
-async def remove_role(guild:discord.Guild, member: discord.Member):
+async def remove_role(guild: discord.Guild, member: discord.Member):
     cactusRoles = [role for role in member.roles if 'Cactus Coin:' in role.name]
     if cactusRoles:
         cactusRole = cactusRoles[0]
@@ -64,9 +65,9 @@ async def verify_coin(guild: discord.Guild, member: discord.Member, amount: int 
     db_amount = get_coin(member.id)
     if db_amount:
         amount = db_amount
-        logging.debug('Found coin for ' + member.name + ': ' + str(db_amount))
+        logging.debug('Found coin for ' + member.display_name + ': ' + str(db_amount))
     else:
-        logging.debug('No coin found for ' + member.name + ', defaulting to: ' + str(amount))
+        logging.debug('No coin found for ' + member.display_name + ', defaulting to: ' + str(amount))
         update_coin(member.id, amount)
 
     roleNames = [role.name for role in member.roles if 'Cactus Coin:' in role.name]
@@ -85,7 +86,6 @@ async def clear_old_roles(guild: discord.Guild):
 # Deletes old role and calls function to update new role displaying coin amount
 async def update_role(guild: discord.Guild, member: discord.Member, amount: int):
     await remove_role(guild, member)
-
     role = await create_role(guild, amount)
     await member.add_roles(role, reason='Cactus Coin: Role updated for ' + member.name + ' to ' + str(amount))
 
@@ -115,7 +115,6 @@ async def compute_rankings(guild: discord.Guild):
             return
         icon = member.display_avatar
         # check if we already have the file in tmp folder
-        print(storedIcons)
         if f'{icon.key}-44px.png' not in storedIcons:
             img = Image.open(BytesIO(await icon.read()))
             img = img.resize((128, 128))
