@@ -28,6 +28,7 @@ class ConfirmBet(discord.ui.View):
         else:
             await interaction.response.send_message('Hey this is not your decision to make.', ephemeral=True)
 
+
 # Button prompts that let members decide who won the bet
 class DecideBetOutcome(discord.ui.View):
     def __init__(self, member1: discord.Member, member2: discord.Member):
@@ -36,18 +37,18 @@ class DecideBetOutcome(discord.ui.View):
         self.member1 = member1
         self.member1choice = None
         button1 = discord.ui.Button(label=member1.display_name, style=discord.ButtonStyle.blurple)
-        button1.callback = self.member1Win
+        button1.callback = self.member1win
 
         self.member2 = member2
         self.member2choice = None
         button2 = discord.ui.Button(label=member2.display_name, style=discord.ButtonStyle.blurple)
-        button2.callback = self.member2Win
+        button2.callback = self.member2win
 
         self.add_item(button1)
         self.add_item(button2)
 
     # Choose the bet outcome as member1
-    async def member1Win(self, interaction: discord.Interaction):
+    async def member1win(self, interaction: discord.Interaction):
         if interaction.user.id == self.member1.id:
             self.member1choice = self.member1.id
         elif interaction.user.id == self.member2.id:
@@ -66,9 +67,8 @@ class DecideBetOutcome(discord.ui.View):
         else:
             await interaction.response.send_message('Winner chosen, waiting for other party...', ephemeral=True)
 
-
     # Choose the bet outcome as member2
-    async def member2Win(self, interaction: discord.Interaction):
+    async def member2win(self, interaction: discord.Interaction):
         if interaction.user.id == self.member1.id:
             self.member1choice = self.member2.id
         elif interaction.user.id == self.member2.id:
