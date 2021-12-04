@@ -146,7 +146,7 @@ async def compute_rankings(guild: discord.Guild):
     # create a glowy effect on the plot by plotting different bars
     n_shades = 5
     diff_linewidth = .05
-    alpha_value = 0.3 / n_shades
+    alpha_value = 0.5 / n_shades
     for n in range(1, n_shades + 1):
         plt.barh(memberNames, memberAmounts,
                 height=(height + (diff_linewidth * n)),
