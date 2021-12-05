@@ -1,4 +1,6 @@
 import discord
+import commands
+import config
 
 
 # Define a simple View that gives us a confirmation menu
@@ -8,7 +10,6 @@ class ConfirmBet(discord.ui.View):
         self.value = None
         self.memberId = memberid
 
-    # This one is similar to the confirmation button except sets the inner value to `False`
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user.id == self.memberId:
@@ -17,9 +18,6 @@ class ConfirmBet(discord.ui.View):
         else:
             await interaction.response.send_message('Hey this is not your decision to make.', ephemeral=True)
 
-    # When the confirm button is pressed, set the inner value to `True` and
-    # stop the View from listening to more input.
-    # We also send the user an ephemeral message that we're confirming their choice.
     @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
     async def confirm(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user.id == self.memberId:
@@ -88,4 +86,29 @@ class DecideBetOutcome(discord.ui.View):
             await interaction.response.send_message('Winner chosen, waiting for other party...', ephemeral=True)
 
 
+class JoinWheel(discord.ui.View):
+    def __init__(self, member: discord.Member, amount: int):
+        super().__init__(timeout=120.0)
+        self.members = [member]
+        self.betAmount = amount
 
+    @discord.ui.button(label='Join', style=discord.ButtonStyle.green)
+    async def join(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if interaction.user not in self.members:
+            currentCoin = commands.get_coin(interaction.user.id)
+            if currentCoin - self.betAmount >= config.getAttribute('debtLimit'):
+                self.members.append(interaction.user)
+                await interaction.response.send_message('You\'re in the bet, good luck!', ephemeral=True)
+            else:
+                await interaction.response.send_message('Sorry, you don\'t have enough money to join this bet.', ephemeral=True)
+        else:
+            await interaction.response.send_message('You\'ve already joined the bet, be patient.', ephemeral=True)
+
+    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.red)
+    async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if interaction.user == self.members[0]:
+            self.members = None
+            await interaction.response.send_message('You got it, cancelling the bet.', ephemeral=True)
+            self.stop()
+        else:
+            await interaction.response.send_message('Sorry, only the person who started the bet can stop it.', ephemeral=True)

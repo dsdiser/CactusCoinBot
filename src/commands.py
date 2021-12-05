@@ -180,6 +180,11 @@ def offset_image(x, y, icon, max_value, ax):
     ax.add_artist(ab)
 
 
+# Generate wheel for bet as a gif
+def generate_wheel(members):
+    sliceDegree = len(members) / 360
+    # Iterate through members and make slices for each member, concat them all together, then spin
+
 
 #############################################################
 # SQL functions for updating

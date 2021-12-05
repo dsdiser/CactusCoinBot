@@ -12,22 +12,35 @@ import datetime
 logging.basicConfig(stream=sys.stderr, level=config.getAttribute('logLevel'))
 
 userCommands = {
-    '!help': 'Usage: `!help` \n Outputs this list of commands.',
-    '!debtlimit': 'Usage: `!debtlimit` \n Outputs the max amount of coin someone can go into debt.',
-    '!setup': 'Usage: `!setup [user1] [user2] [user3]` \n Updates the user\'s role with their current amount or the default starting amount of coin if no record exists.',
-    '!give': 'Usage: `!give [user] [amount]` \n Gives coin to a specific user, no strings attached.',
-    '!bet': 'Usage: `!bet [user] [amount] [reason]` \n Starts a bet instance with another member, follow the button prompts to complete the bet.',
-    '!wheel': 'Usage: `!wheel [amount]` \n Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
-    '!rankings': 'Usage: `!rankings` \n Outputs power rankings for the server.',
-    '!brokecheck': 'Usage: `!brokecheck [user]` \n Checks a member\'s poverty level.',
+    '!help': 'Usage: `!help` \n '
+             'Outputs this list of commands.',
+    '!debtlimit': 'Usage: `!debtlimit` \n '
+                  'Outputs the max amount of coin someone can go into debt.',
+    '!setup': 'Usage: `!setup [user1] [user2] [user3]` \n '
+              'Updates the user\'s role with their current amount or the default starting amount of coin if no record exists.',
+    '!give': 'Usage: `!give [user] [amount]` \n '
+             'Gives coin to a specific user, no strings attached.',
+    '!bet': 'Usage: `!bet [user] [amount] [reason]` \n '
+            'Starts a bet instance with another member, follow the button prompts to complete the bet.',
+    '!wheel': 'Usage: `!wheel [amount]` \n '
+              'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
+    '!rankings': 'Usage: `!rankings` \n '
+                 'Outputs power rankings for the server.',
+    '!brokecheck': 'Usage: `!brokecheck [user]` \n '
+                   'Checks a member\'s poverty level.',
 }
 
 adminCommands = {
-    '!adminhelp': 'Usage: `!adminhelp` \n Outputs this list of commands.',
-    '!adminadjust': 'Usage: `!adminadjust [user] [amount]` \n Adds/subtracts coin from user\'s wallet.',
-    '!clear': 'Usage: `!clear [user]` \n Clears a user\'s wallet of all coin and removes coin role.',
-    '!reset': 'Usage: `!reset [user]` \n Resets a user\'s wallet to the default starting amount',
-    '!balance': 'Usage: `!balance [user]` \n Outputs a user\'s wallet amount stored in the database.'
+    '!adminhelp': 'Usage: `!adminhelp` \n '
+                  'Outputs this list of commands.',
+    '!adminadjust': 'Usage: `!adminadjust [user] [amount]` \n '
+                    'Adds/subtracts coin from user\'s wallet.',
+    '!clear': 'Usage: `!clear [user]` \n '
+              'Clears a user\'s wallet of all coin and removes coin role.',
+    '!reset': 'Usage: `!reset [user]` \n '
+              'Resets a user\'s wallet to the default starting amount',
+    '!balance': 'Usage: `!balance [user]` \n '
+                'Outputs a user\'s wallet amount stored in the database.'
 }
 
 class Client(discord.Client):
@@ -135,7 +148,7 @@ class Client(discord.Client):
                     else:
                         betResultView = views.DecideBetOutcome(message.author, recieving_member)
                         await betMessage.edit(
-                            recieving_member.display_name + ' has accepted the bet. After the bet is over, pick a winner below:',
+                            f'{recieving_member.display_name} has accepted the bet. After the bet is over, pick a winner below:',
                             view=betResultView)
                         await betResultView.wait()
                         if betResultView.winner is None:
@@ -146,11 +159,34 @@ class Client(discord.Client):
                             await betMessage.edit(
                                 f'{winner.display_name} won the ${str(amount)} bet against {loser.display_name} for "{messageContent[3]}"!',
                                 view=None)
+                            # resolve bet amounts
                             await commands.add_coin(guild, winner, amount)
                             await commands.add_coin(guild, loser, -amount)
 
             else:
                 await message.reply('Error parsing command. Follow the format: `!bet [user] [amount] [reason]`')
+
+        elif message.content.startswith('!wheel'):
+            messageContent = message.content.split()
+            if len(messageContent) == 2 and messageContent[1].isnumeric():
+                betAmount = int(messageContent[1])
+                wheelJoinView = views.JoinWheel(message.author, betAmount)
+                wheelMessage = await message.channel.send(
+                    f'It\'s time to spin the wheel! The bet is {messageContent[1]} coin, and the winner takes all!\n'
+                    f'Click "Join" to play! You have 2 minutes to join the bet.',
+                    view=wheelJoinView
+                )
+                await wheelJoinView.wait()
+                if wheelJoinView.members is None:
+                    await wheelMessage.edit('The wheel bet has been cancelled.', view=None)
+                    return
+                elif len(wheelJoinView.members) == 1:
+                    await wheelMessage.edit('Not enough people have joined this wheel, the bet is cancelled.', view=None)
+                    return
+                    # Grab the list of members that have joined the wheel instance
+                # wheelGifPath = commands.generateWheel(wheelJoinView.members)
+            else:
+                await message.reply('Error parsing command. Follow the format: `!wheel [amount]`')
 
         elif message.content.startswith('!adminadjust') and commands.is_admin(message.author):
             messageContent = message.content.split()
@@ -190,7 +226,7 @@ class Client(discord.Client):
                 await message.reply('Error parsing command. Follow the format: `!balance [user]`')
 
         elif message.content.startswith('!hardreset') and commands.is_dev(message.author):
-            # BE CAREFUL WITH THIS
+            # BE CAREFUL WITH THIS IT WILL CLEAR OUT ALL COIN
             output = ''
             for member in guild.members:
                 coin = commands.get_coin(member.id)
