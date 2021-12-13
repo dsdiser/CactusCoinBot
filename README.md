@@ -23,3 +23,4 @@ Secrets are currently stored in config.yml, and should contain the following fie
 
 * serverId
 * channelName
+* dbFile
