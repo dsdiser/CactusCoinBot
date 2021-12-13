@@ -218,7 +218,7 @@ def generate_wheel(members: List[discord.Member]):
     # GIF method 
     wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs[1:])
     # Video method
-    vid = cv2.VideoWriter('../tmp/outpy.mp4', cv2.VideoWriter_fourcc(*'MP4V'), 10, (canvas_size, canvas_size))
+    vid = cv2.VideoWriter('../tmp/outpy.mp4', 0x7634706d, 10, (canvas_size, canvas_size))
     for img in wheelImgs:
         img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         vid.write(img)
