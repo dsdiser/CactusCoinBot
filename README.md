@@ -6,7 +6,7 @@ Install the latest version of miniconda [here](https://docs.conda.io/en/latest/m
 Use this command in the directory to create your environment and install packages:
 
 ```commandline
-conda create -f environment.yml
+conda env create -f environment.yml
 ```
 
 or to update existing install:

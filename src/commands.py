@@ -1,3 +1,4 @@
+from random import randint
 import discord
 import config
 import sql_client as sql
@@ -5,9 +6,14 @@ import logging
 from io import BytesIO
 from PIL import Image, ImageDraw
 import os
+from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import datetime
+from math import atan
+
+if not os.path.exists('../tmp'):
+    os.makedirs('../tmp')
 
 # Matplotlib styling
 plt.style.use('dark_background')
@@ -181,8 +187,38 @@ def offset_image(x, y, icon, max_value, ax):
 
 
 # Generate wheel for bet as a gif
-def generate_wheel(members):
-    sliceDegree = len(members) / 360
+def generate_wheel(members: List[discord.Member]):
+    canvas_size = 1000
+    wheel_offset = 5
+    bounding_box = [(wheel_offset, wheel_offset), (canvas_size - wheel_offset, canvas_size - wheel_offset)]
+    sliceDegree = 360 / len(members)
+    currSlice = 0
+    wheelPath = '../tmp/wheel.png'
+    wheel = Image.new('RGBA', (canvas_size, canvas_size), '#DDD')
+    for member in members:
+        print(currSlice)
+        wheelDraw = ImageDraw.Draw(wheel)
+        wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice+sliceDegree, fill=member['color'], width=5, outline='black')
+        currSlice += sliceDegree
+    wheel.save('../tmp/wheel.png')
+
+    rotations = randint(300, 500)
+    degree_rotate = 10
+    wheelImgs = []
+    currWheel = wheel
+    acceleration = -.005
+    for i in range(rotations):
+        if i < 50:
+            wheelImgs.append(currWheel.rotate(degree_rotate, expand=False, fillcolor='#DDD'))
+            degree_rotate += 5
+        else:
+            degree_rotate = min(0, degree_rotate - i*acceleration)
+            wheelImgs.append(currWheel.rotate(degree_rotate, expand=False, fillcolor='#DDD'))
+        currWheel = wheelImgs[-1]
+
+    wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs)
+    return wheelPath
+    
     # Iterate through members and make slices for each member, concat them all together, then spin
 
 
