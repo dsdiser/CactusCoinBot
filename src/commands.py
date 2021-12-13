@@ -10,7 +10,8 @@ from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import datetime
-from math import atan
+import cv2
+import numpy as np
 
 if not os.path.exists('../tmp'):
     os.makedirs('../tmp')
@@ -196,27 +197,34 @@ def generate_wheel(members: List[discord.Member]):
     wheelPath = '../tmp/wheel.png'
     wheel = Image.new('RGBA', (canvas_size, canvas_size), '#DDD')
     for member in members:
-        print(currSlice)
         wheelDraw = ImageDraw.Draw(wheel)
         wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice+sliceDegree, fill=member['color'], width=5, outline='black')
         currSlice += sliceDegree
-    wheel.save('../tmp/wheel.png')
-
-    rotations = randint(300, 500)
+    
+    rotations = randint(50, 100)
     degree_rotate = 10
-    wheelImgs = []
-    currWheel = wheel
-    acceleration = -.005
+    total_rotate = 10
+    wheelImgs = [wheel]
+    acceleration = -.05
     for i in range(rotations):
-        if i < 50:
-            wheelImgs.append(currWheel.rotate(degree_rotate, expand=False, fillcolor='#DDD'))
-            degree_rotate += 5
+        wheelImgs.append(wheel.rotate(total_rotate, expand=False, fillcolor='#DDD'))
+        if i < 20:
+            total_rotate += degree_rotate
+            degree_rotate += 1
         else:
-            degree_rotate = min(0, degree_rotate - i*acceleration)
-            wheelImgs.append(currWheel.rotate(degree_rotate, expand=False, fillcolor='#DDD'))
-        currWheel = wheelImgs[-1]
+            total_rotate += degree_rotate
+            degree_rotate = max(0, degree_rotate - i*acceleration)
 
-    wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs)
+    # GIF method 
+    wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs[1:])
+    # Video method
+    vid = cv2.VideoWriter('../tmp/outpy.mp4', cv2.VideoWriter_fourcc(*'MP4V'), 10, (canvas_size, canvas_size))
+    for img in wheelImgs:
+        img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        vid.write(img)
+
+    vid.release()
+    
     return wheelPath
     
     # Iterate through members and make slices for each member, concat them all together, then spin
