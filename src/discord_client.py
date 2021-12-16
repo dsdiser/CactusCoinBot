@@ -2,22 +2,18 @@ import discord
 import config
 import commands
 import views
-import logging
-import sys
 import spellchecker
-import atexit
-import signal
-import datetime
 
-logging.basicConfig(stream=sys.stderr, level=config.getAttribute('logLevel'))
+
+
 
 userCommands = {
     '!help': 'Usage: `!help` \n '
              'Outputs this list of commands.',
-    '!debtlimit': 'Usage: `!debtlimit` \n '
-                  'Outputs the max amount of coin someone can go into debt.',
     '!setup': 'Usage: `!setup [user1] [user2] [user3]` \n '
               'Updates the user\'s role with their current amount or the default starting amount of coin if no record exists.',
+    '!debtlimit': 'Usage: `!debtlimit` \n '
+                  'Outputs the max amount of coin someone can go into debt.',
     '!give': 'Usage: `!give [user] [amount]` \n '
              'Gives coin to a specific user, no strings attached.',
     '!bet': 'Usage: `!bet [user] [amount] [reason]` \n '
@@ -35,18 +31,23 @@ adminCommands = {
                   'Outputs this list of commands.',
     '!adminadjust': 'Usage: `!adminadjust [user] [amount]` \n '
                     'Adds/subtracts coin from user\'s wallet.',
+    '!balance': 'Usage: `!balance [user]` \n '
+                'Outputs a user\'s wallet amount stored in the database.',
+    '!bigwins': 'Usage: `!bigwins [week|month|year] \n '
+                'Outputs the greatest gains in the specified time period.',
+    '!biglosses': 'Usage: `!bigwins [week|month|year] \n '
+                'Outputs the greatest losses in the specified time period.',
     '!clear': 'Usage: `!clear [user]` \n '
               'Clears a user\'s wallet of all coin and removes coin role.',
     '!reset': 'Usage: `!reset [user]` \n '
-              'Resets a user\'s wallet to the default starting amount',
-    '!balance': 'Usage: `!balance [user]` \n '
-                'Outputs a user\'s wallet amount stored in the database.'
+              'Resets a user\'s wallet to the default starting amount'
 }
 
 class Client(discord.Client):
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
+        # TODO: COLLECT EMOTE INFORMATION AND USE THAT INSTEAD OF HARDCODED VALUES
 
     async def on_message(self, message: discord.Message):
         # we do not want the bot to reply to itself or message in other channels
@@ -85,11 +86,11 @@ class Client(discord.Client):
 
         elif message.content.startswith('!rankings'):
             filePath = await commands.compute_rankings(message.guild)
-            file = discord.File(f'../tmp/power-rankings-{datetime.date.today().strftime("%m-%d-%Y")}.png')
+            file = discord.File(filePath)
             await message.channel.send('Here are the current power rankings:', file=file)
 
         elif message.content.startswith('!debtlimit'):
-            await message.channel.send(f'The current debt limit is {config.getAttribute("debtLimit")}.')
+            await message.channel.send(f'The current debt limit is {str(config.getAttribute("debtLimit", -10000))}.')
 
         elif message.content.startswith('!brokecheck'):
             if message.mentions:
@@ -225,6 +226,20 @@ class Client(discord.Client):
             else:
                 await message.reply('Error parsing command. Follow the format: `!balance [user]`')
 
+        elif message.content.startswith('!bigwins') or message.content.startswith('!biglosses') and commands.is_admin(message.author):
+            messageContent = message.content.split()
+            validPeriods = ['week', 'month', 'year']
+            if messageContent[1] in validPeriods:
+                wins = message.content.startswith('!bigwins')
+                filePath = await commands.get_movements(message.guild, messageContent[1], wins)
+                if filePath:
+                    file = discord.File(filePath)
+                    text = 'winners' if wins else 'losers'
+                    await message.channel.send(f'Here are the this {messageContent[1]}\'s biggest {text}:', file=file)
+            else:
+                await message.reply(f'Error parsing command. Follow the format: `{messageContent[0]} [week|month|year]`')
+                
+
         elif message.content.startswith('!hardreset') and commands.is_dev(message.author):
             # BE CAREFUL WITH THIS IT WILL CLEAR OUT ALL COIN
             output = ''
@@ -233,7 +248,7 @@ class Client(discord.Client):
                 commands.remove_coin(member.id)
                 await commands.remove_role(guild, member)
                 output += member.display_name + ' - ' + str(coin) + '\n'
-            await message.reply('Everything cleared out...here\'s the short history.\n' + output)
+            await message.reply('Everything cleared out...here\'s the short history just in case.\n' + output)
 
         # Can't parse command, reply best guess
         elif message.content.startswith('!'):
@@ -245,17 +260,3 @@ class Client(discord.Client):
                 await message.reply(f'Invalid command, did you mean `{correction}`?  Try `!help` for valid commands.')
             else:
                 await message.reply('Invalid command. Try `!help` for valid commands.')
-
-intents = discord.Intents.default()
-intents.members = True
-client = Client(intents=intents)
-client.run(config.getAttribute('token'))
-
-
-def handle_exit():
-    logging.info('Closing client down...')
-    client.close()
-
-atexit.register(handle_exit)
-signal.signal(signal.SIGTERM, handle_exit)
-signal.signal(signal.SIGINT, handle_exit)

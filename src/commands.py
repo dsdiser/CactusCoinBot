@@ -49,7 +49,8 @@ def is_dev(member: discord.Member):
 # Creates a cactus coin role that denotes the amount of coin a member has.
 async def create_role(guild: discord.Guild, amount: int):
     # avoid duplicating roles whenever possible
-    newRoleName = 'Cactus Coin: ' + str(amount)
+    prefix = config.getAttribute('rolePrefix', 'Cactus Coin')
+    newRoleName = f'{prefix}: ' + str(amount)
     existingRole = [role for role in guild.roles if role.name == newRoleName]
     if existingRole:
         return existingRole[0]
@@ -106,22 +107,60 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int):
     await update_role(guild, member, current_coin)
 
 
+# Gets outlier movements either positive or negative and outputs a chart of them
+async def get_movements(guild: discord.Guild, timePeriod: str, isWins: bool):
+    # TODO: FIX TIME PERIODS, GET START OF TIME THEN CONVERT TO UTC
+    if timePeriod == 'week':
+        startPeriod = datetime.datetime.utcnow()
+    elif timePeriod == 'month':
+        startPeriod = datetime.datetime.utcnow()
+    elif timePeriod == 'year':
+        startPeriod = datetime.datetime.utcnow()
+
+    transactions = get_transactions(startPeriod)
+    if not transactions:
+        return None
+    numb_trans = min(len(transactions), 5)
+    transactions = transactions[:numb_trans] if isWins else transactions[-numb_trans:]
+    
+    await graph_amounts(guild, transactions)
+    plt.xlabel('Coin (¢)')
+
+    if isWins:
+        plt.title('Greatest Wins From the Past ' + timePeriod.capitalize(), fontweight='bold')
+        filename = f'../wins-{timePeriod}.png'
+    else:    
+        plt.title('Greatest Losses From the Past ' + timePeriod.capitalize(), fontweight='bold')
+        filename = f'../losses-{timePeriod}.png'
+    plt.savefig(filename, bbox_inches='tight', pad_inches=.5)
+    plt.close()
+    return filename
+
+
 # Computes power rankings for the server and outputs them in a bar graph in an image
 async def compute_rankings(guild: discord.Guild):
-    # get all coin amounts
     rankings = get_coin_rankings()
-    # pull all images of ranking members from discord
-    memberIcons = []
-    memberNames = []
-    memberAmounts = []
-    memberColor = []
+    await graph_amounts(guild, rankings)
+    today = datetime.date.today().strftime("%m-%d-%Y")
+    plt.title('Cactus Gang Power Rankings\n' + today, fontweight='bold')
+    plt.xlabel('Coin (¢)')
+    plt.savefig(f'../tmp/power-rankings-{today}.png', bbox_inches='tight', pad_inches=.5)
+    plt.close()
+    return f'../tmp/power-rankings-{today}.png'
+
+
+# Generic function for graphing a nice looking bar chart of values for each member
+# This function does not set plot title, axis titles, or close the plot
+async def graph_amounts(guild: discord.Guild, data):
+    # pull all images of ranking members from Discord
+    memberIcons, memberNames, memberAmounts, memberColor = [], [], [], []
     storedIcons = os.listdir('../tmp')
-    for memberid, amount in rankings:
+    for memberid, amount in data:
         member = guild.get_member(memberid)
         if not member:
             return
         icon = member.display_avatar
-        # check if we already have the file in tmp folder
+        # check if we already have the file in tmp folder, if not grab it and save it.
         if f'{icon.key}-44px.png' not in storedIcons:
             img = Image.open(BytesIO(await icon.read()))
             img = img.resize((128, 128))
@@ -145,7 +184,6 @@ async def compute_rankings(guild: discord.Guild):
     ax.set_axisbelow(True)
     ax.yaxis.grid(color='.9', linestyle='dashed')
     ax.xaxis.grid(color='.9', linestyle='dashed')
-    # plot chart
     height = .8
     plt.barh(memberNames, memberAmounts, height=height, color=memberColor)
 
@@ -159,16 +197,10 @@ async def compute_rankings(guild: discord.Guild):
                 alpha=alpha_value,
                 color=memberColor)
 
-    today = datetime.date.today().strftime("%m-%d-%Y")
-    plt.title('Cactus Gang Power Rankings\n' + today, fontweight='bold')
-    plt.xlabel('Coin (¢)')
-
     # add user icons to bar charts
     max_value = max(memberAmounts)
     for i, (value, icon) in enumerate(zip(memberAmounts, memberIcons)):
         offset_image(value, i, icon, max_value=max_value, ax=ax)
-    plt.savefig(f'../tmp/power-rankings-{today}.png', bbox_inches='tight', pad_inches=.5)
-    plt.close()
 
 
 # Adds discord icons to bar chart
@@ -187,7 +219,7 @@ def offset_image(x, y, icon, max_value, ax):
     ax.add_artist(ab)
 
 
-# Generate wheel for bet as a gif
+# Generate wheel for bet as a gif or video
 def generate_wheel(members: List[discord.Member]):
     canvas_size = 1000
     wheel_offset = 5
@@ -195,12 +227,14 @@ def generate_wheel(members: List[discord.Member]):
     sliceDegree = 360 / len(members)
     currSlice = 0
     wheelPath = '../tmp/wheel.png'
+    # TODO: FIX WHEEL STYLE AND ADD TEXT
     wheel = Image.new('RGBA', (canvas_size, canvas_size), '#DDD')
     for member in members:
         wheelDraw = ImageDraw.Draw(wheel)
         wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice+sliceDegree, fill=member['color'], width=5, outline='black')
         currSlice += sliceDegree
     
+    # TODO: FIX PHYSICS
     rotations = randint(50, 100)
     degree_rotate = 10
     total_rotate = 10
@@ -218,16 +252,13 @@ def generate_wheel(members: List[discord.Member]):
     # GIF method 
     wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs[1:])
     # Video method
-    vid = cv2.VideoWriter('../tmp/outpy.mp4', 0x7634706d, 10, (canvas_size, canvas_size))
+    vid = cv2.VideoWriter('../tmp/outpy.mp4', -1, 10, (canvas_size, canvas_size))
     for img in wheelImgs:
         img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         vid.write(img)
 
     vid.release()
-    
     return wheelPath
-    
-    # Iterate through members and make slices for each member, concat them all together, then spin
 
 
 #############################################################
@@ -236,6 +267,8 @@ def update_coin(memberid: int, amount: int):
     logging.debug('Updating coin for: ' + str(memberid) + ': ' + str(amount))
     cur = sql.connection.cursor()
     cur.execute("INSERT INTO AMOUNTS(id, coin) VALUES ('{0}', {1}) ON CONFLICT(id) DO UPDATE SET coin=excluded.coin".format(memberid, amount))
+    sql.connection.commit()
+    cur.execute("INSERT INTO TRANSACTIONS(date, id, coin) VALUES (?, ?, ?)", (datetime.datetime.utcnow(), memberid, amount))
     sql.connection.commit()
     return amount
 
@@ -247,16 +280,24 @@ def get_coin(memberid: int):
         return amount[0][0]
     return None
 
-
+# Clears out all coin from a member's entry
 def remove_coin(memberid: int):
     cur = sql.connection.cursor()
     cur.execute("DELETE FROM AMOUNTS WHERE id is '{0}'".format(memberid))
     sql.connection.commit()
 
-
+# Gets rankings of coin amounts
 def get_coin_rankings():
     cur = sql.connection.cursor()
-    amounts = cur.execute("SELECT id, coin from AMOUNTS ORDER BY coin").fetchall()
+    amounts = cur.execute("SELECT id, coin FROM AMOUNTS ORDER BY coin").fetchall()
     if amounts:
         return amounts
+    return None
+
+# Get all transactions between now and the given date, ordered from greatest to least.
+def get_transactions(time: datetime):
+    cur = sql.connection.cursor()
+    transactions = cur.execute("SELECT id, coin FROM TRANSACTIONS WHERE date BETWEEN ? AND ? ORDER BY coin", (time, datetime.datetime.utcnow())).fetchall()
+    if transactions:
+        return transactions
     return None
