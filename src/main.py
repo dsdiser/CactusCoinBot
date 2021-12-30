@@ -19,11 +19,12 @@ def main():
         client.run(token)
     else:
         logging.error('No token provided in config.yml, bot not started.')
-    
+
 
 def handle_exit():
     logging.info('Closing client down...')
-    client.close()
+    # await client.close()
+
 
 atexit.register(handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
