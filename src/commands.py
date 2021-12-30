@@ -10,8 +10,8 @@ from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import datetime
-import cv2
-import numpy as np
+# import cv2
+# import numpy as np
 
 if not os.path.exists('../tmp'):
     os.makedirs('../tmp')
@@ -99,11 +99,13 @@ async def update_role(guild: discord.Guild, member: discord.Member, amount: int)
 
 
 # Adds a specified coin amount to a member's role and stores in the database
-async def add_coin(guild: discord.Guild, member: discord.Member, amount: int):
+async def add_coin(guild: discord.Guild, member: discord.Member, amount: int, persist: bool=True):
     memberId = member.id
     current_coin = get_coin(memberId)
     current_coin += amount
     update_coin(memberId, current_coin)
+    if persist:
+        add_transaction(memberId, amount)
     await update_role(guild, member, current_coin)
 
 
@@ -111,15 +113,19 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int):
 async def get_movements(guild: discord.Guild, timePeriod: str, isWins: bool):
     # TODO: FIX TIME PERIODS, GET START OF TIME THEN CONVERT TO UTC
     if timePeriod == 'week':
-        startPeriod = datetime.datetime.utcnow()
+        startPeriod = datetime.datetime.now() - datetime.timedelta(days=datetime.datetime.now().weekday())
     elif timePeriod == 'month':
-        startPeriod = datetime.datetime.utcnow()
+        startPeriod = datetime.datetime.today().replace(day=1)
     elif timePeriod == 'year':
-        startPeriod = datetime.datetime.utcnow()
+        startPeriod = datetime.date(datetime.date.today().year, 1, 1)
 
     transactions = get_transactions(startPeriod)
     if not transactions:
         return None
+    if isWins:
+        transactions = [i for i in transactions if i[1] > 0]
+    else:
+        transactions = [i for i in transactions if i[1] < 0]
     numb_trans = min(len(transactions), 5)
     transactions = transactions[:numb_trans] if isWins else transactions[-numb_trans:]
     
@@ -128,10 +134,10 @@ async def get_movements(guild: discord.Guild, timePeriod: str, isWins: bool):
 
     if isWins:
         plt.title('Greatest Wins From the Past ' + timePeriod.capitalize(), fontweight='bold')
-        filename = f'../wins-{timePeriod}.png'
+        filename = f'../tmp/wins-{timePeriod}.png'
     else:    
         plt.title('Greatest Losses From the Past ' + timePeriod.capitalize(), fontweight='bold')
-        filename = f'../losses-{timePeriod}.png'
+        filename = f'../tmp/losses-{timePeriod}.png'
     plt.savefig(filename, bbox_inches='tight', pad_inches=.5)
     plt.close()
     return filename
@@ -184,15 +190,17 @@ async def graph_amounts(guild: discord.Guild, data):
     ax.set_axisbelow(True)
     ax.yaxis.grid(color='.9', linestyle='dashed')
     ax.xaxis.grid(color='.9', linestyle='dashed')
+    lab_x = [i for i in range(len(data))]
     height = .8
-    plt.barh(memberNames, memberAmounts, height=height, color=memberColor)
+    plt.barh(lab_x, memberAmounts, height=height, color=memberColor)
+    plt.yticks(lab_x, memberNames)
 
     # create a glowy effect on the plot by plotting different bars
     n_shades = 5
     diff_linewidth = .05
     alpha_value = 0.5 / n_shades
     for n in range(1, n_shades + 1):
-        plt.barh(memberNames, memberAmounts,
+        plt.barh(lab_x, memberAmounts,
                 height=(height + (diff_linewidth * n)),
                 alpha=alpha_value,
                 color=memberColor)
@@ -252,23 +260,21 @@ def generate_wheel(members: List[discord.Member]):
     # GIF method 
     wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs[1:])
     # Video method
-    vid = cv2.VideoWriter('../tmp/outpy.mp4', -1, 10, (canvas_size, canvas_size))
-    for img in wheelImgs:
-        img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        vid.write(img)
-
-    vid.release()
+    # vid = cv2.VideoWriter('../tmp/outpy.mp4', -1, 10, (canvas_size, canvas_size))
+    # for img in wheelImgs:
+    #     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    #     vid.write(img)
+    # vid.release()
     return wheelPath
 
 
 #############################################################
-# SQL functions for updating
+# SQL functions for updating DB state
+#############################################################
 def update_coin(memberid: int, amount: int):
     logging.debug('Updating coin for: ' + str(memberid) + ': ' + str(amount))
     cur = sql.connection.cursor()
     cur.execute("INSERT INTO AMOUNTS(id, coin) VALUES ('{0}', {1}) ON CONFLICT(id) DO UPDATE SET coin=excluded.coin".format(memberid, amount))
-    sql.connection.commit()
-    cur.execute("INSERT INTO TRANSACTIONS(date, id, coin) VALUES (?, ?, ?)", (datetime.datetime.utcnow(), memberid, amount))
     sql.connection.commit()
     return amount
 
@@ -280,11 +286,27 @@ def get_coin(memberid: int):
         return amount[0][0]
     return None
 
+
 # Clears out all coin from a member's entry
 def remove_coin(memberid: int):
     cur = sql.connection.cursor()
     cur.execute("DELETE FROM AMOUNTS WHERE id is '{0}'".format(memberid))
     sql.connection.commit()
+
+
+# Adds a transaction entry for a specific member
+def add_transaction(memberid: int, amount: int):
+    cur = sql.connection.cursor()
+    cur.execute("INSERT INTO TRANSACTIONS(date, id, coin) VALUES (?, ?, ?)", (datetime.datetime.utcnow(), memberid, amount))
+    sql.connection.commit()
+
+
+# Removes all transactions associated with a user
+def remove_transactions(memberid: int):
+    cur = sql.connection.cursor()
+    cur.execute("DELETE FROM TRANSACTIONS WHERE id is '{0}'".format(memberid))
+    sql.connection.commit()
+
 
 # Gets rankings of coin amounts
 def get_coin_rankings():
@@ -293,6 +315,7 @@ def get_coin_rankings():
     if amounts:
         return amounts
     return None
+
 
 # Get all transactions between now and the given date, ordered from greatest to least.
 def get_transactions(time: datetime):

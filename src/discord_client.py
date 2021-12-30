@@ -113,7 +113,7 @@ class Client(discord.Client):
                     await message.reply('Are you stupid or something?')
                 elif amount > 0:
                     await commands.add_coin(guild, recieving_member, amount)
-                    await commands.add_coin(guild, message.author, -amount )
+                    await commands.add_coin(guild, message.author, -amount)
                 elif amount < 0:
                     await message.reply('Nice try <:shanechamp:910353567603384340>')
             else:
@@ -194,7 +194,7 @@ class Client(discord.Client):
             if message.mentions and len(messageContent) == 3 and messageContent[2].lstrip('-').isnumeric():
                 recieving_member = message.mentions[0]
                 amount = int(messageContent[2])
-                await commands.add_coin(guild, recieving_member, amount)
+                await commands.add_coin(guild, recieving_member, amount, persist=False)
             else:
                 await message.reply('Error parsing command. Follow the format: `!adminadjust [user] [amount]`')
 
@@ -202,7 +202,7 @@ class Client(discord.Client):
             if message.mentions:
                 recieving_member = message.mentions[0]
                 amount = commands.get_coin(recieving_member.id)
-                await commands.add_coin(guild, recieving_member, -(amount - config.getAttribute('defaultCoin')))
+                await commands.add_coin(guild, recieving_member, -(amount - config.getAttribute('defaultCoin')), persist=False)
                 await commands.update_role(guild, recieving_member, config.getAttribute('defaultCoin'))
             else:
                 await message.reply('Error parsing command. Follow the format: `!reset [user]`')
@@ -229,13 +229,15 @@ class Client(discord.Client):
         elif message.content.startswith('!bigwins') or message.content.startswith('!biglosses') and commands.is_admin(message.author):
             messageContent = message.content.split()
             validPeriods = ['week', 'month', 'year']
-            if messageContent[1] in validPeriods:
+            if len(messageContent) > 1 and messageContent[1] in validPeriods:
                 wins = message.content.startswith('!bigwins')
+                text = 'winners' if wins else 'losers'
                 filePath = await commands.get_movements(message.guild, messageContent[1], wins)
                 if filePath:
                     file = discord.File(filePath)
-                    text = 'winners' if wins else 'losers'
                     await message.channel.send(f'Here are the this {messageContent[1]}\'s biggest {text}:', file=file)
+                else:
+                    await message.reply(f'There are no {text} for this {messageContent[1]}.')
             else:
                 await message.reply(f'Error parsing command. Follow the format: `{messageContent[0]} [week|month|year]`')
                 
@@ -246,6 +248,7 @@ class Client(discord.Client):
             for member in guild.members:
                 coin = commands.get_coin(member.id)
                 commands.remove_coin(member.id)
+                commands.remove_transactions(member.id)
                 await commands.remove_role(guild, member)
                 output += member.display_name + ' - ' + str(coin) + '\n'
             await message.reply('Everything cleared out...here\'s the short history just in case.\n' + output)

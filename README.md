@@ -15,6 +15,13 @@ or to update existing install:
 conda env update -f environment.yml --prune
 ```
 
+
+For 32-bit environments install python 3.9 and run the following:
+```commandline
+python -m pip install -r requirements.txt
+```
+
+
 ## Commands
 This section is unfinished.
 
@@ -28,3 +35,5 @@ Secrets are currently stored in config.yml, and should contain the following fie
 * debtLimit - The maximum amount of coin a user can go into debt.
 * rolePrefix - The prefix for the role given to each user with their wallet amount. 
 * logLevel - Optional parameter for a specific logging level for the application.
+
+An example config file is contained in default.config.yml
