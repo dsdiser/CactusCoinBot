@@ -10,8 +10,9 @@ from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import datetime
-# import cv2
-# import numpy as np
+from math import atan, exp
+import numpy as np
+import random
 
 if not os.path.exists('../tmp'):
     os.makedirs('../tmp')
@@ -227,7 +228,16 @@ def offset_image(x, y, icon, max_value, ax):
     ax.add_artist(ab)
 
 
-# Generate wheel for bet as a gif or video
+#dont know if you wanted this returns the index of the winning member in members
+def get_winner(num_players,win_ang):
+    sliceDegree = 360/num_players
+    curr_degree = win_ang
+    for i in range(num_players):
+        if curr_degree < sliceDegree:
+            return i
+        curr_degree -= sliceDegree
+
+# Generate wheel for bet as a gif
 def generate_wheel(members: List[discord.Member]):
     canvas_size = 1000
     wheel_offset = 5
@@ -241,30 +251,59 @@ def generate_wheel(members: List[discord.Member]):
         wheelDraw = ImageDraw.Draw(wheel)
         wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice+sliceDegree, fill=member['color'], width=5, outline='black')
         currSlice += sliceDegree
-    
-    # TODO: FIX PHYSICS
-    rotations = randint(50, 100)
-    degree_rotate = 10
-    total_rotate = 10
-    wheelImgs = [wheel]
-    acceleration = -.05
-    for i in range(rotations):
-        wheelImgs.append(wheel.rotate(total_rotate, expand=False, fillcolor='#DDD'))
-        if i < 20:
-            total_rotate += degree_rotate
-            degree_rotate += 1
-        else:
-            total_rotate += degree_rotate
-            degree_rotate = max(0, degree_rotate - i*acceleration)
+    wheel.save('../tmp/wheel.png')
 
-    # GIF method 
-    wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs[1:])
-    # Video method
-    # vid = cv2.VideoWriter('../tmp/outpy.mp4', -1, 10, (canvas_size, canvas_size))
-    # for img in wheelImgs:
-    #     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    #     vid.write(img)
-    # vid.release()
+    win_ang = random.randint(0,360)
+
+    #generate time mesh for acceleration function to operate on
+    #set to be 7 "seconds" polled at .1 seconds found this gave enough
+    #points to make a smoother gif
+    time_mesh = [t for t in np.arange(0.0,7.0,0.1)]
+    
+    #starting set of rotations I found to look like someone is pulling a wheel back for 
+    #a rather large spin. can be messed around with 
+    start_animation = [0.0, -0.75, -1.5, -2.25, -3.0, -3.75, -4.5, -5.25]
+    
+    #start actual spin at the last part of the pullback
+    #store all rotations of original image (in degrees) that create the gif
+    rotations = [start_animation[7]]
+    velocities = [0]
+
+    #i picked e^2t for no real reason other than it makes the wheel get up to speed quick
+    acceleration_func = lambda t: exp(2*t) if t <= 2.0 else 0
+
+    #now calculate distance traveled in degrees from the original image for each point in the
+    #time mesh using basic rotational dynamics
+    for i in range(1,len(time_mesh)):
+        t = time_mesh[i]
+        a = acceleration_func(t)
+        v = velocities[i-1] + a * t
+        d = rotations[i-1] + v * t
+
+        rotations.append(d)
+        velocities.append(v)
+
+    #reguardless of where we ended up, square up the last point with the original image so we can
+    #position the wheel where the winning slice always hits the top
+    win_ang_pos = rotations[len(rotations)-1] + (360 - (rotations[len(rotations)-1] % 360))
+    rotations.append(win_ang_pos)
+
+    #in order to hit the top of the circle, find the distance from the winning angle to 270(the top
+    #of the circle). The minus 180 here is used to get the more gentle stop from the end_animation
+    #array
+    rotations.append(win_ang_pos + (270 - win_ang) - 180 if win_ang <= 270 else win_ang_pos + 360 - (win_ang - 270) - 180)
+    end_animation = [45,45,25,20,20,10,5,2,1,1,1]
+    curr = rotations[len(rotations)-1]
+    for i in range(len(end_animation)):
+        curr += end_animation[i]
+        rotations.append(curr)
+
+    #append the start animation to the front of the rotations array
+    rotations = start_animation + rotations
+
+    #make the gif
+    wheelImgs = [wheel.rotate(-rotations[i], expand=False, fillcolor='#DDD') for i in range(len(rotations))]
+    wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs)
     return wheelPath
 
 
