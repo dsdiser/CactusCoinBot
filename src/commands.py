@@ -10,7 +10,7 @@ from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import datetime
-from math import exp, pi, cos, sin
+from math import exp, pi, cos, sin, radians
 import random
 
 if not os.path.exists('../tmp'):
@@ -248,8 +248,8 @@ async def generate_wheel(members: List[discord.Member]):
     wheel_offset = 5
     bounding_box = [(wheel_offset, wheel_offset), (canvas_size - wheel_offset, canvas_size - wheel_offset)]
     sliceDegree = 360 / len(members)
+    radius = (bounding_box[1][0] - bounding_box[0][0]) / 2
     currSlice = 0
-    # TODO: FIX WHEEL STYLE AND ADD TEXT
     wheel = Image.new('RGBA', (canvas_size, canvas_size), '#212946')
     for member in members:
         # Verify we have the member's icon stored
@@ -258,13 +258,19 @@ async def generate_wheel(members: List[discord.Member]):
         wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice + sliceDegree, fill=member.color.to_rgb(),
                            width=5, outline='white')
         # Put each participant's icon on the image
-        memberIcon = Image.open(f'../tmp/{member.display_avatar.key}-44px.png')
+        if len(members) < 6:
+            memberIcon = Image.open(f'../tmp/{member.display_avatar.key}.png')
+            offset = 128
+        else:
+            memberIcon = Image.open(f'../tmp/{member.display_avatar.key}-44px.png')
+            offset = 44
+        memberIcon = memberIcon.convert('RGBA')
         midAngle = currSlice + sliceDegree/2
-        radius = (bounding_box[1][0] - bounding_box[0][0]) / 2
+
         # grab coordinates to place icon at
-        coords = (round(bounding_box[0][0] + radius + 0.5 * radius * cos(-midAngle * pi / (currSlice + sliceDegree))),
-                  round(bounding_box[0][1] + radius + 0.5 * radius * sin(-midAngle * pi / (currSlice + sliceDegree))))
-        wheel.paste(memberIcon.rotate(midAngle), coords)
+        coords = (round(bounding_box[0][1] + radius + 0.5 * radius * sin(radians(midAngle - 90))) - offset,
+                  round(bounding_box[0][0] + radius + 0.5 * radius * cos(radians(midAngle - 90))) - offset)
+        wheel.paste(memberIcon.rotate(midAngle+90), coords)
         currSlice += sliceDegree
 
     win_ang = random.randint(0, 360)
@@ -317,7 +323,15 @@ async def generate_wheel(members: List[discord.Member]):
 
     # Make the gif
     outPath = '../tmp/wheel.gif'
-    wheelImgs = [wheel.rotate(-rotations[i], expand=False, fillcolor='#212946') for i in range(len(rotations))]
+    wheelImgs = []
+    triangle = (bounding_box[0][0] + radius - 30, 0), (bounding_box[0][0] + radius + 30, 0), (bounding_box[0][0] + radius, 50)
+    for i in range(len(rotations)):
+        currWheel = wheel.rotate(-rotations[i], expand=False, fillcolor='#212946')
+        draw = ImageDraw.Draw(currWheel)
+        draw.polygon(triangle, outline='#181A1B', fill='#181A1B')
+        wheelImgs.append(currWheel)
+    draw = ImageDraw.Draw(wheel)
+    draw.polygon(triangle, outline='#181A1B', fill='#181A1B')
     wheel.save(outPath, save_all=True, append_images=wheelImgs)
     winner = get_winner(len(members), win_ang)
     return outPath, winner

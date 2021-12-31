@@ -184,10 +184,10 @@ class Client(discord.Client):
                 if wheelJoinView.members is None:
                     await wheelMessage.edit('The wheel bet has been cancelled.', view=None)
                     return
-                # elif len(wheelJoinView.members) == 1:
-                #     await wheelMessage.edit('Not enough people have joined this wheel, the bet is cancelled.', view=None)
-                #     return
-                names = [member.display_name for member in self.members]
+                elif len(wheelJoinView.members) == 1:
+                    await wheelMessage.edit('Not enough people have joined this wheel, the bet is cancelled.', view=None)
+                    return
+                names = [member.display_name for member in wheelJoinView.members]
                 joined_names = ', '.join(names)
                 await wheelMessage.edit(f'The wheel is starting!\n Current bettors: {joined_names}', view=None)
                 wheelGifPath, winnerIdx = await commands.generate_wheel(wheelJoinView.members)

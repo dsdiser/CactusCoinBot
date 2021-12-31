@@ -101,12 +101,10 @@ class JoinWheel(discord.ui.View):
                 await interaction.response.send_message('You\'re in the bet, good luck!', ephemeral=True)
                 names = [member.display_name for member in self.members]
                 joined_names = ', '.join(names)
-                print('testing testing')
                 await interaction.message.edit(content=
-                                                        f'It\'s time to spin the wheel! The bet is {str(self.betAmount)} coin, and the winner takes all!\n'
-                                                        f'Click "Join" to play! You have 2 minutes to join the bet.\n'
-                                                        f'Current bettors: {joined_names}')
-                print('edited message')
+                                               f'It\'s time to spin the wheel! The bet is {str(self.betAmount)} coin, and the winner takes all!\n'
+                                               f'Click "Join" to play! You have 2 minutes to join the bet.\n'
+                                               f'Current bettors: {joined_names}')
             else:
                 await interaction.response.send_message('Sorry, you don\'t have enough money to join this bet.', ephemeral=True)
         else:
