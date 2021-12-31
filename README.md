@@ -37,3 +37,18 @@ Secrets are currently stored in config.yml, and should contain the following fie
 * logLevel - Optional parameter for a specific logging level for the application.
 
 An example config file is contained in default.config.yml
+
+Start the bot using:
+```commandline
+python main.py
+```
+while in the src directory.
+
+Alternatively:
+```commandline
+cp cactuscoinbot.service /lib/systemd/system/
+sudo chmod 644 /lib/systemd/system/cactuscoinbot.service
+sudo systemctl daemon-reload
+sudo systemctl enable cactuscoinbot
+sudo systemctl start cactuscoinbot
+```

@@ -136,4 +136,4 @@ tmp/main
 config.yml
 planning.txt
 # folder for image and db storage
-tmp
+tmp/*
