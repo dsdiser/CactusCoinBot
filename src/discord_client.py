@@ -176,7 +176,8 @@ class Client(discord.Client):
                 wheelJoinView = views.JoinWheel(message.author, betAmount)
                 wheelMessage = await message.channel.send(
                     f'It\'s time to spin the wheel! The bet is {messageContent[1]} coin, and the winner takes all!\n'
-                    f'Click "Join" to play! You have 2 minutes to join the bet.',
+                    f'Click "Join" to play! You have 2 minutes to join the bet.\n'
+                    f'Current bettors: {message.author.display_name}',
                     view=wheelJoinView
                 )
                 await wheelJoinView.wait()
@@ -186,6 +187,9 @@ class Client(discord.Client):
                 # elif len(wheelJoinView.members) == 1:
                 #     await wheelMessage.edit('Not enough people have joined this wheel, the bet is cancelled.', view=None)
                 #     return
+                names = [member.display_name for member in self.members]
+                joined_names = ', '.join(names)
+                await wheelMessage.edit(f'The wheel is starting!\n Current bettors: {joined_names}', view=None)
                 wheelGifPath, winnerIdx = await commands.generate_wheel(wheelJoinView.members)
                 wheelGif = discord.File(wheelGifPath)
                 winner = wheelJoinView.members[winnerIdx]

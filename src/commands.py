@@ -259,11 +259,11 @@ async def generate_wheel(members: List[discord.Member]):
                            width=5, outline='white')
         # Put each participant's icon on the image
         memberIcon = Image.open(f'../tmp/{member.display_avatar.key}-44px.png')
-        midAngle = (currSlice * 2 + sliceDegree) / 2
+        midAngle = currSlice + sliceDegree/2
         radius = (bounding_box[1][0] - bounding_box[0][0]) / 2
         # grab coordinates to place icon at
-        coords = (round(bounding_box[0][0] + radius + 0.5 * radius * cos(-midAngle * pi / 180.0)),
-                  round(bounding_box[0][1] + radius + 0.5 * radius * sin(-midAngle * pi / 180.0)))
+        coords = (round(bounding_box[0][0] + radius + 0.5 * radius * cos(-midAngle * pi / (currSlice + sliceDegree))),
+                  round(bounding_box[0][1] + radius + 0.5 * radius * sin(-midAngle * pi / (currSlice + sliceDegree))))
         wheel.paste(memberIcon.rotate(midAngle), coords)
         currSlice += sliceDegree
 
