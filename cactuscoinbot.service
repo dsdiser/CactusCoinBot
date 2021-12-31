@@ -3,6 +3,7 @@ Description=Cactus Coin Bot
 After=multi-user.target
 
 [Service]
+User=pi
 Type=simple
 WorkingDirectory=/home/pi/CactusCoinBot/src/
 ExecStart=/usr/bin/python main.py
