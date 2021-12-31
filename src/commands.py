@@ -13,9 +13,6 @@ import datetime
 from math import exp, pi, cos, sin, radians
 import random
 
-if not os.path.exists('../tmp'):
-    os.makedirs('../tmp')
-
 # Matplotlib styling
 plt.style.use('dark_background')
 for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
