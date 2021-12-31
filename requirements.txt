@@ -1,0 +1,6 @@
+# PIP install file
+pyyaml
+pillow
+matplotlib
+git+https://github.com/Rapptz/discord.py
+pyspellchecker

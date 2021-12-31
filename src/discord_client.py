@@ -2,51 +2,50 @@ import discord
 import config
 import commands
 import views
-import logging
-import sys
 import spellchecker
-import atexit
-import signal
-import datetime
 
-logging.basicConfig(stream=sys.stderr, level=config.getAttribute('logLevel'))
 
 userCommands = {
-    '!help': 'Usage: `!help` \n '
+    '!help': 'Usage: `!help`\n'
              'Outputs this list of commands.',
-    '!debtlimit': 'Usage: `!debtlimit` \n '
-                  'Outputs the max amount of coin someone can go into debt.',
-    '!setup': 'Usage: `!setup [user1] [user2] [user3]` \n '
+    '!setup': 'Usage: `!setup [user1] [user2] [user3]`\n'
               'Updates the user\'s role with their current amount or the default starting amount of coin if no record exists.',
-    '!give': 'Usage: `!give [user] [amount]` \n '
-             'Gives coin to a specific user, no strings attached.',
-    '!bet': 'Usage: `!bet [user] [amount] [reason]` \n '
-            'Starts a bet instance with another member, follow the button prompts to complete the bet.',
-    '!wheel': 'Usage: `!wheel [amount]` \n '
-              'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
-    '!rankings': 'Usage: `!rankings` \n '
+    '!rankings': 'Usage: `!rankings`\n'
                  'Outputs power rankings for the server.',
-    '!brokecheck': 'Usage: `!brokecheck [user]` \n '
+    '!give': 'Usage: `!give [user] [amount]`\n'
+             'Gives coin to a specific user, no strings attached.',
+    '!bet': 'Usage: `!bet [user] [amount] [reason]`\n'
+            'Starts a bet instance with another member, follow the button prompts to complete the bet.',
+    '!wheel': 'Usage: `!wheel [amount]`\n'
+              'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
+    '!brokecheck': 'Usage: `!brokecheck [user]`\n'
                    'Checks a member\'s poverty level.',
+    '!debtlimit': 'Usage: `!debtlimit`\n'
+                  'Outputs the max amount of coin someone can go into debt.'
 }
 
 adminCommands = {
-    '!adminhelp': 'Usage: `!adminhelp` \n '
+    '!adminhelp': 'Usage: `!adminhelp`\n'
                   'Outputs this list of commands.',
-    '!adminadjust': 'Usage: `!adminadjust [user] [amount]` \n '
+    '!adminadjust': 'Usage: `!adminadjust [user] [amount]`\n'
                     'Adds/subtracts coin from user\'s wallet.',
-    '!clear': 'Usage: `!clear [user]` \n '
+    '!balance': 'Usage: `!balance [user]`\n'
+                'Outputs a user\'s wallet amount stored in the database.',
+    '!clear': 'Usage: `!clear [user]`\n'
               'Clears a user\'s wallet of all coin and removes coin role.',
-    '!reset': 'Usage: `!reset [user]` \n '
-              'Resets a user\'s wallet to the default starting amount',
-    '!balance': 'Usage: `!balance [user]` \n '
-                'Outputs a user\'s wallet amount stored in the database.'
+    '!bigwins': 'Usage: `!bigwins [week|month|year]`\n'
+                'Outputs the greatest gains in the specified time period.',
+    '!biglosses': 'Usage: `!biglosses [week|month|year]`\n'
+                'Outputs the greatest losses in the specified time period.',
+    '!reset': 'Usage: `!reset [user]`\n'
+              'Resets a user\'s wallet to the default starting amount'
 }
 
 class Client(discord.Client):
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
+        # TODO: COLLECT EMOTE INFORMATION AND USE THAT INSTEAD OF HARDCODED VALUES
 
     async def on_message(self, message: discord.Message):
         # we do not want the bot to reply to itself or message in other channels
@@ -56,14 +55,18 @@ class Client(discord.Client):
         guild = message.channel.guild
         if message.content.startswith('!help'):
             embed = discord.Embed(title='Cactus Coin Bot Commands', color=discord.Color.dark_green())
-            for key in userCommands.keys():
-                embed.add_field(name=key, value=userCommands[key], inline=False)
+            for idx, key in enumerate(userCommands.keys()):
+                embed.add_field(name=key, value=userCommands[key], inline=True)
+                if idx % 2 == 1:
+                    embed.add_field(name='\u200b', value='\u200b', inline=True)
             await message.channel.send(embed=embed)
 
         elif message.content.startswith('!adminhelp') and commands.is_admin(message.author):
             embed = discord.Embed(title='Cactus Coin Bot Admin Commands', color=discord.Color.orange())
-            for key in adminCommands.keys():
-                embed.add_field(name=key, value=adminCommands[key], inline=False)
+            for idx, key in enumerate(adminCommands.keys()):
+                embed.add_field(name=key, value=adminCommands[key], inline=True)
+                if idx % 2 == 1:
+                    embed.add_field(name='\u200b', value='\u200b', inline=True)
             await message.channel.send(embed=embed)
 
         elif message.content.startswith('!hello'):
@@ -85,11 +88,11 @@ class Client(discord.Client):
 
         elif message.content.startswith('!rankings'):
             filePath = await commands.compute_rankings(message.guild)
-            file = discord.File(f'../tmp/power-rankings-{datetime.date.today().strftime("%m-%d-%Y")}.png')
+            file = discord.File(filePath)
             await message.channel.send('Here are the current power rankings:', file=file)
 
         elif message.content.startswith('!debtlimit'):
-            await message.channel.send(f'The current debt limit is {config.getAttribute("debtLimit")}.')
+            await message.channel.send(f'The current debt limit is {str(config.getAttribute("debtLimit", -10000))}.')
 
         elif message.content.startswith('!brokecheck'):
             if message.mentions:
@@ -112,7 +115,7 @@ class Client(discord.Client):
                     await message.reply('Are you stupid or something?')
                 elif amount > 0:
                     await commands.add_coin(guild, recieving_member, amount)
-                    await commands.add_coin(guild, message.author, -amount )
+                    await commands.add_coin(guild, message.author, -amount)
                 elif amount < 0:
                     await message.reply('Nice try <:shanechamp:910353567603384340>')
             else:
@@ -193,7 +196,7 @@ class Client(discord.Client):
             if message.mentions and len(messageContent) == 3 and messageContent[2].lstrip('-').isnumeric():
                 recieving_member = message.mentions[0]
                 amount = int(messageContent[2])
-                await commands.add_coin(guild, recieving_member, amount)
+                await commands.add_coin(guild, recieving_member, amount, persist=False)
             else:
                 await message.reply('Error parsing command. Follow the format: `!adminadjust [user] [amount]`')
 
@@ -201,7 +204,7 @@ class Client(discord.Client):
             if message.mentions:
                 recieving_member = message.mentions[0]
                 amount = commands.get_coin(recieving_member.id)
-                await commands.add_coin(guild, recieving_member, -(amount - config.getAttribute('defaultCoin')))
+                await commands.add_coin(guild, recieving_member, -(amount - config.getAttribute('defaultCoin')), persist=False)
                 await commands.update_role(guild, recieving_member, config.getAttribute('defaultCoin'))
             else:
                 await message.reply('Error parsing command. Follow the format: `!reset [user]`')
@@ -225,15 +228,32 @@ class Client(discord.Client):
             else:
                 await message.reply('Error parsing command. Follow the format: `!balance [user]`')
 
+        elif message.content.startswith('!bigwins') or message.content.startswith('!biglosses') and commands.is_admin(message.author):
+            messageContent = message.content.split()
+            validPeriods = ['week', 'month', 'year']
+            if len(messageContent) > 1 and messageContent[1] in validPeriods:
+                wins = message.content.startswith('!bigwins')
+                text = 'winners' if wins else 'losers'
+                filePath = await commands.get_movements(message.guild, messageContent[1], wins)
+                if filePath:
+                    file = discord.File(filePath)
+                    await message.channel.send(f'Here are the this {messageContent[1]}\'s biggest {text}:', file=file)
+                else:
+                    await message.reply(f'There are no {text} for this {messageContent[1]}.')
+            else:
+                await message.reply(f'Error parsing command. Follow the format: `{messageContent[0]} [week|month|year]`')
+                
+
         elif message.content.startswith('!hardreset') and commands.is_dev(message.author):
             # BE CAREFUL WITH THIS IT WILL CLEAR OUT ALL COIN
             output = ''
             for member in guild.members:
                 coin = commands.get_coin(member.id)
                 commands.remove_coin(member.id)
+                commands.remove_transactions(member.id)
                 await commands.remove_role(guild, member)
                 output += member.display_name + ' - ' + str(coin) + '\n'
-            await message.reply('Everything cleared out...here\'s the short history.\n' + output)
+            await message.reply('Everything cleared out...here\'s the short history just in case.\n' + output)
 
         # Can't parse command, reply best guess
         elif message.content.startswith('!'):
@@ -245,17 +265,3 @@ class Client(discord.Client):
                 await message.reply(f'Invalid command, did you mean `{correction}`?  Try `!help` for valid commands.')
             else:
                 await message.reply('Invalid command. Try `!help` for valid commands.')
-
-intents = discord.Intents.default()
-intents.members = True
-client = Client(intents=intents)
-client.run(config.getAttribute('token'))
-
-
-def handle_exit():
-    logging.info('Closing client down...')
-    client.close()
-
-atexit.register(handle_exit)
-signal.signal(signal.SIGTERM, handle_exit)
-signal.signal(signal.SIGINT, handle_exit)

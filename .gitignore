@@ -132,8 +132,8 @@ dmypy.json
 #####################################################################
 # Configuration
 .idea
-src/main
+tmp/main
 config.yml
 planning.txt
 # folder for image and db storage
-tmp
+tmp/*

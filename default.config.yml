@@ -1,0 +1,7 @@
+channelName: commands
+dbFile: ../tmp/db
+token: YOUR_TOKEN_HERE
+defaultCoin: 1000
+debtLimit: -1000
+logLevel: INFO
+rolePrefix: Cactus Coin
