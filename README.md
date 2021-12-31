@@ -38,15 +38,14 @@ Secrets are currently stored in config.yml, and should contain the following fie
 
 An example config file is contained in default.config.yml
 
-Start the bot using:
+Start the bot using the following command while in the src directory:
 ```commandline
 python main.py
 ```
-while in the src directory.
 
 Alternatively:
 ```commandline
-cp cactuscoinbot.service /lib/systemd/system/
+sudo cp cactuscoinbot.service /lib/systemd/system/
 sudo chmod 644 /lib/systemd/system/cactuscoinbot.service
 sudo systemctl daemon-reload
 sudo systemctl enable cactuscoinbot
