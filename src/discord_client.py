@@ -57,14 +57,18 @@ class Client(discord.Client):
         guild = message.channel.guild
         if message.content.startswith('!help'):
             embed = discord.Embed(title='Cactus Coin Bot Commands', color=discord.Color.dark_green())
-            for key in userCommands.keys():
-                embed.add_field(name=key, value=userCommands[key], inline=False)
+            for idx, key in enumerate(userCommands.keys()):
+                embed.add_field(name=key, value=userCommands[key], inline=True)
+                if idx % 2 == 1:
+                    embed.add_field(name='\u200b', value='\u200b', inline=True)
             await message.channel.send(embed=embed)
 
         elif message.content.startswith('!adminhelp') and commands.is_admin(message.author):
             embed = discord.Embed(title='Cactus Coin Bot Admin Commands', color=discord.Color.orange())
-            for key in adminCommands.keys():
-                embed.add_field(name=key, value=adminCommands[key], inline=False)
+            for idx, key in enumerate(adminCommands.keys()):
+                embed.add_field(name=key, value=adminCommands[key], inline=True)
+                if idx % 2 == 1:
+                    embed.add_field(name='\u200b', value='\u200b', inline=True)
             await message.channel.send(embed=embed)
 
         elif message.content.startswith('!hello'):
