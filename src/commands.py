@@ -10,8 +10,7 @@ from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import datetime
-from math import atan, exp
-import numpy as np
+from math import exp, pi, cos, sin
 import random
 
 if not os.path.exists('../tmp'):
@@ -155,29 +154,34 @@ async def compute_rankings(guild: discord.Guild):
     plt.close()
     return f'../tmp/power-rankings-{today}.png'
 
+# Verify we have a member's icon
+async def get_icon(member: discord.Member):
+    # check if we already have the file in tmp folder, if not grab it and save it.
+    icon = member.display_avatar
+    storedIcons = os.listdir('../tmp')
+    if f'{icon.key}-44px.png' not in storedIcons:
+        img = Image.open(BytesIO(await icon.read()))
+        img = img.resize((128, 128))
+        img.save(f'../tmp/{icon.key}.png')
+        img.putalpha(icon_mask)
+        img = img.resize(icon_size)
+        img.save(f'../tmp/{icon.key}-44px.png')
+        img.close()
+
 
 # Generic function for graphing a nice looking bar chart of values for each member
 # This function does not set plot title, axis titles, or close the plot
 async def graph_amounts(guild: discord.Guild, data):
     # pull all images of ranking members from Discord
     memberIcons, memberNames, memberAmounts, memberColor = [], [], [], []
-    storedIcons = os.listdir('../tmp')
+
     for memberid, amount in data:
         member = guild.get_member(memberid)
         if not member:
             return
-        icon = member.display_avatar
-        # check if we already have the file in tmp folder, if not grab it and save it.
-        if f'{icon.key}-44px.png' not in storedIcons:
-            img = Image.open(BytesIO(await icon.read()))
-            img = img.resize((128, 128))
-            img.save(f'../tmp/{icon.key}.png')
-            img.putalpha(icon_mask)
-            img = img.resize(icon_size)
-            img.save(f'../tmp/{icon.key}-44px.png')
-            img.close()
+        await get_icon(member)
 
-        memberIcons.append(f'../tmp/{icon.key}-44px.png')
+        memberIcons.append(f'../tmp/{member.display_avatar.key}-44px.png')
         memberNames.append(member.display_name)
         memberAmounts.append(amount)
         # alternate bar color generation
@@ -228,8 +232,8 @@ def offset_image(x, y, icon, max_value, ax):
     ax.add_artist(ab)
 
 
-#dont know if you wanted this returns the index of the winning member in members
-def get_winner(num_players,win_ang):
+# Returns the index of the winning member in members
+def get_winner(num_players, win_ang):
     sliceDegree = 360/num_players
     curr_degree = win_ang
     for i in range(num_players):
@@ -237,44 +241,54 @@ def get_winner(num_players,win_ang):
             return i
         curr_degree -= sliceDegree
 
+
 # Generate wheel for bet as a gif
-def generate_wheel(members: List[discord.Member]):
+async def generate_wheel(members: List[discord.Member]):
     canvas_size = 1000
     wheel_offset = 5
     bounding_box = [(wheel_offset, wheel_offset), (canvas_size - wheel_offset, canvas_size - wheel_offset)]
     sliceDegree = 360 / len(members)
     currSlice = 0
-    wheelPath = '../tmp/wheel.png'
     # TODO: FIX WHEEL STYLE AND ADD TEXT
-    wheel = Image.new('RGBA', (canvas_size, canvas_size), '#DDD')
+    wheel = Image.new('RGBA', (canvas_size, canvas_size), '#212946')
     for member in members:
+        # Verify we have the member's icon stored
+        await get_icon(member)
         wheelDraw = ImageDraw.Draw(wheel)
-        wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice+sliceDegree, fill=member['color'], width=5, outline='black')
+        wheelDraw.pieslice(bounding_box, start=currSlice, end=currSlice + sliceDegree, fill=member.color.to_rgb(),
+                           width=5, outline='white')
+        # Put each participant's icon on the image
+        memberIcon = Image.open(f'../tmp/{member.display_avatar.key}-44px.png')
+        midAngle = (currSlice * 2 + sliceDegree) / 2
+        radius = (bounding_box[1][0] - bounding_box[0][0]) / 2
+        # grab coordinates to place icon at
+        coords = (round(bounding_box[0][0] + radius + 0.5 * radius * cos(-midAngle * pi / 180.0)),
+                  round(bounding_box[0][1] + radius + 0.5 * radius * sin(-midAngle * pi / 180.0)))
+        wheel.paste(memberIcon.rotate(midAngle), coords)
         currSlice += sliceDegree
-    wheel.save('../tmp/wheel.png')
 
-    win_ang = random.randint(0,360)
+    win_ang = random.randint(0, 360)
 
-    #generate time mesh for acceleration function to operate on
-    #set to be 7 "seconds" polled at .1 seconds found this gave enough
-    #points to make a smoother gif
-    time_mesh = [t for t in np.arange(0.0,7.0,0.1)]
+    # generate time mesh for acceleration function to operate on
+    # set to be 7 "seconds" polled at .1 seconds found this gave enough
+    # points to make a smoother gif
+    time_mesh = [i/10 for i in range(71)]
     
-    #starting set of rotations I found to look like someone is pulling a wheel back for 
-    #a rather large spin. can be messed around with 
+    # starting set of rotations I found to look like someone is pulling a wheel back for
+    # a rather large spin. can be messed around with
     start_animation = [0.0, -0.75, -1.5, -2.25, -3.0, -3.75, -4.5, -5.25]
     
-    #start actual spin at the last part of the pullback
-    #store all rotations of original image (in degrees) that create the gif
+    # start actual spin at the last part of the pullback
+    # store all rotations of original image (in degrees) that create the gif
     rotations = [start_animation[7]]
     velocities = [0]
 
-    #i picked e^2t for no real reason other than it makes the wheel get up to speed quick
+    # e^2t for no real reason other than it makes the wheel get up to speed quick
     acceleration_func = lambda t: exp(2*t) if t <= 2.0 else 0
 
-    #now calculate distance traveled in degrees from the original image for each point in the
-    #time mesh using basic rotational dynamics
-    for i in range(1,len(time_mesh)):
+    # now calculate distance traveled in degrees from the original image for each point in the
+    # time mesh using basic rotational dynamics
+    for i in range(1, len(time_mesh)):
         t = time_mesh[i]
         a = acceleration_func(t)
         v = velocities[i-1] + a * t
@@ -283,28 +297,30 @@ def generate_wheel(members: List[discord.Member]):
         rotations.append(d)
         velocities.append(v)
 
-    #reguardless of where we ended up, square up the last point with the original image so we can
-    #position the wheel where the winning slice always hits the top
+    # Regardless of where we ended up, square up the last point with the original image so we can
+    # position the wheel where the winning slice always hits the top
     win_ang_pos = rotations[len(rotations)-1] + (360 - (rotations[len(rotations)-1] % 360))
     rotations.append(win_ang_pos)
 
-    #in order to hit the top of the circle, find the distance from the winning angle to 270(the top
-    #of the circle). The minus 180 here is used to get the more gentle stop from the end_animation
-    #array
+    # In order to hit the top of the circle, find the distance from the winning angle to 270(the top
+    # of the circle). The minus 180 here is used to get the more gentle stop from the end_animation
+    # array
     rotations.append(win_ang_pos + (270 - win_ang) - 180 if win_ang <= 270 else win_ang_pos + 360 - (win_ang - 270) - 180)
-    end_animation = [45,45,25,20,20,10,5,2,1,1,1]
+    end_animation = [45, 45, 25, 20, 20, 10, 5, 2, 1, 1, 1]
     curr = rotations[len(rotations)-1]
     for i in range(len(end_animation)):
         curr += end_animation[i]
         rotations.append(curr)
 
-    #append the start animation to the front of the rotations array
+    # Append the start animation to the front of the rotations array
     rotations = start_animation + rotations
 
-    #make the gif
-    wheelImgs = [wheel.rotate(-rotations[i], expand=False, fillcolor='#DDD') for i in range(len(rotations))]
-    wheel.save('../tmp/out.gif', save_all=True, append_images=wheelImgs)
-    return wheelPath
+    # Make the gif
+    outPath = '../tmp/wheel.gif'
+    wheelImgs = [wheel.rotate(-rotations[i], expand=False, fillcolor='#212946') for i in range(len(rotations))]
+    wheel.save(outPath, save_all=True, append_images=wheelImgs)
+    winner = get_winner(len(members), win_ang)
+    return outPath, winner
 
 
 #############################################################

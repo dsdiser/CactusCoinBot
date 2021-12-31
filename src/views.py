@@ -112,3 +112,12 @@ class JoinWheel(discord.ui.View):
             self.stop()
         else:
             await interaction.response.send_message('Sorry, only the person who started the bet can stop it.', ephemeral=True)
+
+    @discord.ui.button(label='Start', style=discord.ButtonStyle.blurple)
+    async def start(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if interaction.user == self.members[0]:
+            await interaction.response.send_message('You got it, starting the bet.', ephemeral=True)
+            self.stop()
+        else:
+            await interaction.response.send_message('Sorry, only the person who started the bet can start it.',
+                                                    ephemeral=True)

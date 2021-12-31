@@ -183,11 +183,21 @@ class Client(discord.Client):
                 if wheelJoinView.members is None:
                     await wheelMessage.edit('The wheel bet has been cancelled.', view=None)
                     return
-                elif len(wheelJoinView.members) == 1:
-                    await wheelMessage.edit('Not enough people have joined this wheel, the bet is cancelled.', view=None)
-                    return
-                    # Grab the list of members that have joined the wheel instance
-                # wheelGifPath = commands.generateWheel(wheelJoinView.members)
+                # elif len(wheelJoinView.members) == 1:
+                #     await wheelMessage.edit('Not enough people have joined this wheel, the bet is cancelled.', view=None)
+                #     return
+                wheelGifPath, winnerIdx = await commands.generate_wheel(wheelJoinView.members)
+                wheelGif = discord.File(wheelGifPath)
+                winner = wheelJoinView.members[winnerIdx]
+                winnings = len(wheelJoinView.members) * betAmount
+                # send announcement message
+                await message.channel.send(f'||{winner.display_name} has won the {winnings} coin wheel!||', file=wheelGif)
+                for member in wheelJoinView.members:
+                    if member == winner:
+                        await commands.add_coin(guild, member, winnings - betAmount)
+                    else:
+                        await commands.add_coin(guild, member, -betAmount)
+
             else:
                 await message.reply('Error parsing command. Follow the format: `!wheel [amount]`')
 
