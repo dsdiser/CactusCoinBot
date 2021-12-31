@@ -8,38 +8,38 @@ import spellchecker
 
 
 userCommands = {
-    '!help': 'Usage: `!help` \n '
+    '!help': 'Usage: `!help`\n'
              'Outputs this list of commands.',
-    '!setup': 'Usage: `!setup [user1] [user2] [user3]` \n '
+    '!setup': 'Usage: `!setup [user1] [user2] [user3]`\n'
               'Updates the user\'s role with their current amount or the default starting amount of coin if no record exists.',
-    '!debtlimit': 'Usage: `!debtlimit` \n '
+    '!debtlimit': 'Usage: `!debtlimit`\n'
                   'Outputs the max amount of coin someone can go into debt.',
-    '!give': 'Usage: `!give [user] [amount]` \n '
+    '!give': 'Usage: `!give [user] [amount]`\n'
              'Gives coin to a specific user, no strings attached.',
-    '!bet': 'Usage: `!bet [user] [amount] [reason]` \n '
+    '!bet': 'Usage: `!bet [user] [amount] [reason]`\n'
             'Starts a bet instance with another member, follow the button prompts to complete the bet.',
-    '!wheel': 'Usage: `!wheel [amount]` \n '
+    '!wheel': 'Usage: `!wheel [amount]`\n'
               'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
-    '!rankings': 'Usage: `!rankings` \n '
+    '!rankings': 'Usage: `!rankings`\n'
                  'Outputs power rankings for the server.',
-    '!brokecheck': 'Usage: `!brokecheck [user]` \n '
+    '!brokecheck': 'Usage: `!brokecheck [user]`\n'
                    'Checks a member\'s poverty level.',
 }
 
 adminCommands = {
-    '!adminhelp': 'Usage: `!adminhelp` \n '
+    '!adminhelp': 'Usage: `!adminhelp`\n'
                   'Outputs this list of commands.',
-    '!adminadjust': 'Usage: `!adminadjust [user] [amount]` \n '
+    '!adminadjust': 'Usage: `!adminadjust [user] [amount]`\n'
                     'Adds/subtracts coin from user\'s wallet.',
-    '!balance': 'Usage: `!balance [user]` \n '
+    '!balance': 'Usage: `!balance [user]`\n'
                 'Outputs a user\'s wallet amount stored in the database.',
-    '!bigwins': 'Usage: `!bigwins [week|month|year] \n '
+    '!bigwins': 'Usage: `!bigwins [week|month|year]`\n'
                 'Outputs the greatest gains in the specified time period.',
-    '!biglosses': 'Usage: `!bigwins [week|month|year] \n '
+    '!biglosses': 'Usage: `!biglosses [week|month|year]`\n'
                 'Outputs the greatest losses in the specified time period.',
-    '!clear': 'Usage: `!clear [user]` \n '
+    '!clear': 'Usage: `!clear [user]`\n'
               'Clears a user\'s wallet of all coin and removes coin role.',
-    '!reset': 'Usage: `!reset [user]` \n '
+    '!reset': 'Usage: `!reset [user]`\n'
               'Resets a user\'s wallet to the default starting amount'
 }
 
