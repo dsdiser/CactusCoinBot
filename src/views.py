@@ -1,5 +1,5 @@
 import discord
-import commands
+import bot_helper
 import config
 
 
@@ -95,7 +95,7 @@ class JoinWheel(discord.ui.View):
     @discord.ui.button(label='Join', style=discord.ButtonStyle.green)
     async def join(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user not in self.members:
-            currentCoin = commands.get_coin(interaction.user.id)
+            currentCoin = bot_helper.get_coin(interaction.user.id)
             if currentCoin - self.betAmount >= config.getAttribute('debtLimit'):
                 self.members.append(interaction.user)
                 await interaction.response.send_message('You\'re in the bet, good luck!', ephemeral=True)

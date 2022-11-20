@@ -29,14 +29,16 @@ mask_draw.ellipse((0, 0, 128, 128), fill=255)
 
 
 # Checks admin status for a member for specific admin only functionality.
-def is_admin(member: discord.Member):
+def is_admin(interaction: discord.Interaction):
+    member = interaction.user
     roleNames = [role.name for role in member.roles if 'CactusCoinDev' in role.name or 'President' in role.name or 'Vice President' in role.name]
     if roleNames:
         return True
     return False
 
 
-def is_dev(member: discord.Member):
+def is_dev(interaction: discord.Interaction):
+    member = interaction.user
     roleNames = [role.name for role in member.roles if 'CactusCoinDev' in role.name]
     if roleNames:
         return True

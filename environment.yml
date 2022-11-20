@@ -9,5 +9,5 @@ dependencies:
   - matplotlib
   - opencv
   - pip:
-    - git+https://github.com/Rapptz/discord.py
+    - discord.py
     - pyspellchecker

@@ -1,6 +1,6 @@
 import discord
 import config
-import commands
+import bot_helper
 import views
 import spellchecker
 
