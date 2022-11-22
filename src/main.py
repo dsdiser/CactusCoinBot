@@ -3,11 +3,9 @@ import atexit
 import logging
 import signal
 import sys
-from typing import Optional, Literal
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import Greedy, Context
 
 import config
 from discord_cog import setup
