@@ -2,6 +2,7 @@
 Discord Currency Bot with support for various bets and support for graphing various statistics for user's wallets. This bot stores wallet amounts in a server role to make it easy for a user to see their wallet amount at a glance.
 
 ## Installation
+### Anaconda
 Install the latest version of miniconda [here](https://docs.conda.io/en/latest/miniconda.html).
 Use this command in the directory to create your environment and install packages (note: you may need to add conda-forge as a source in order to install all packages):
 
@@ -9,14 +10,15 @@ Use this command in the directory to create your environment and install package
 conda env create -f environment.yml
 ```
 
-or to update existing install:
+or to update the existing installation:
 
 ```commandline
 conda env update -f environment.yml --prune
 ```
 
+### PIP
 
-For 32-bit environments install python 3.9 and run the following:
+For 32-bit environments install python version >= 3.9 and run the following:
 ```commandline
 python -m pip install -r requirements.txt
 ```
@@ -43,7 +45,7 @@ Start the bot using the following command while in the src directory:
 python main.py
 ```
 
-Alternatively:
+Alternatively you can use the sample service file and install it using:
 ```commandline
 sudo cp cactuscoinbot.service /lib/systemd/system/
 sudo chmod 644 /lib/systemd/system/cactuscoinbot.service
