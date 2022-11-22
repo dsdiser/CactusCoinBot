@@ -8,9 +8,11 @@ import os
 from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-import datetime
+from datetime import datetime, date
 from math import exp, cos, sin, radians
 import random
+from pytz import timezone
+
 
 # Matplotlib styling
 plt.style.use('dark_background')
@@ -115,11 +117,11 @@ async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
     # TODO: FIX TIME PERIODS, GET START OF TIME THEN CONVERT TO UTC
     start_period = ''
     if time_period == 'week':
-        start_period = datetime.datetime.now() - datetime.timedelta(days=datetime.datetime.now().weekday())
+        start_period = datetime.now() - datetime.timedelta(days=datetime.now().weekday())
     elif time_period == 'month':
-        start_period = datetime.datetime.today().replace(day=1)
+        start_period = datetime.today().replace(day=1)
     elif time_period == 'year':
-        start_period = datetime.date(datetime.date.today().year, 1, 1)
+        start_period = date(date.today().year, 1, 1)
 
     transactions = get_transactions(start_period)
     if not transactions:
@@ -149,7 +151,8 @@ async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
 async def compute_rankings(guild: discord.Guild):
     rankings = get_coin_rankings()
     await graph_amounts(guild, rankings)
-    today = datetime.date.today().strftime("%m-%d-%Y")
+    today_date = datetime.today().astimezone(tz=timezone('US/Eastern'))
+    today = today_date.strftime("%m-%d-%Y")
     plt.title('Cactus Gang Power Rankings\n' + today, fontweight='bold')
     plt.xlabel('Coin (¢)')
     plt.savefig(f'../tmp/power-rankings-{today}.png', bbox_inches='tight', pad_inches=.5)
@@ -377,7 +380,7 @@ def remove_coin(member_id: int):
 def add_transaction(member_id: int, amount: int):
     cur = sql.connection.cursor()
     cur.execute("INSERT INTO TRANSACTIONS(date, id, coin) VALUES (?, ?, ?)",
-                (datetime.datetime.utcnow(), member_id, amount))
+                (datetime.utcnow(), member_id, amount))
     sql.connection.commit()
 
 
@@ -401,7 +404,7 @@ def get_coin_rankings():
 def get_transactions(time: datetime):
     cur = sql.connection.cursor()
     transactions = cur.execute("SELECT id, coin FROM TRANSACTIONS WHERE date BETWEEN ? AND ? ORDER BY coin",
-                               (time, datetime.datetime.utcnow())).fetchall()
+                               (time, datetime.utcnow())).fetchall()
     if transactions:
         return transactions
     return None

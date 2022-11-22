@@ -19,14 +19,14 @@ userCommands = {
 }
 
 adminCommands = {
-    '/adminhelp': 'Outputs a list of admin-specific commands.',
-    '/adminadjust': 'Adds/subtracts coin from user\'s wallet.',
-    '/balance': 'Outputs a user\'s wallet amount stored in the database.',
-    '/clear': 'Clears a user\'s wallet of all coin and removes coin role.',
-    '/bigwins': 'Outputs the greatest gains in the specified time period.',
-    '/reset': 'Resets a user\'s wallet to the default starting amount',
-    '/softreset': 'Resets all users\'s wallets to the default starting amount',
-    '/fullclear': 'Clears all users\'s coins and clears all roles !DEV ONLY!',
+    '/adminhelp': '!ADMIN ONLY! Outputs a list of admin-specific commands.',
+    '/adminadjust': '!ADMIN ONLY! Adds/subtracts coin from user\'s wallet.',
+    '/balance': '!ADMIN ONLY! Outputs a user\'s wallet amount stored in the database.',
+    '/clear': '!ADMIN ONLY! Clears a user\'s wallet of all coin and removes coin role.',
+    '/bigwins': '!ADMIN ONLY! Outputs the greatest gains in the specified time period.',
+    '/reset': '!ADMIN ONLY! Resets a user\'s wallet to the default starting amount',
+    '/softreset': '!ADMIN ONLY! Resets all users\'s wallets to the default starting amount',
+    '/fullclear': '!DEV ONLY! Clears all users\'s coins and clears all roles',
 }
 
 
