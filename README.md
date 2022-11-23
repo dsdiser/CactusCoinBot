@@ -1,4 +1,4 @@
-# CactusCoin
+# Cactus Coin Bot
 Discord Currency Bot with support for various bets and support for graphing various statistics for user's wallets. This bot stores wallet amounts in a server role to make it easy for a user to see their wallet amount at a glance.
 
 ## Installation
@@ -18,7 +18,7 @@ conda env update -f environment.yml --prune
 
 ### PIP
 
-For 32-bit environments install python version >= 3.9 and run the following:
+For 32-bit environments install python version >= 3.11 and run the following:
 ```commandline
 python -m pip install -r requirements.txt
 ```
