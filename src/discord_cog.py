@@ -124,7 +124,7 @@ class BotCog(commands.Cog):
             # use view to start interaction and get both users to accept the bet
             view = views.ConfirmBet(user.id)
             await interaction.response.send_message(
-                f'{interaction.user.mention} has challenged {user.mention} to a {str(amount)} coin bet '
+                f'{interaction.user.mention} challenged {user.mention} to a {str(amount)} coin bet '
                 f'for: "{reason}"\n{user.mention}, do you accept?', view=view)
             await view.wait()
             # Deal with view response
@@ -137,13 +137,13 @@ class BotCog(commands.Cog):
             elif not view.value:
                 # user declines
                 await interaction.edit_original_response(content=
-                                                         f'{user.mention} has declined the {amount_str} coin bet '
+                                                         f'{user.mention} declined the {amount_str} coin bet '
                                                          f'from {interaction.user.mention} for: "{reason}".', view=None)
             else:
                 # bet has gone through, start bet instance
                 bet_id = bot_helper.start_bet(interaction.user, user, amount, reason)
                 await interaction.edit_original_response(content=
-                                                         f'{interaction.user.mention} has started a {amount_str} '
+                                                         f'{interaction.user.mention} started a {amount_str} '
                                                          f' coin bet against {user.mention} for: "{reason}"\n'
                                                          f'ID: {bet_id}',
                                                          view=None)
@@ -158,13 +158,41 @@ class BotCog(commands.Cog):
         original_bet = sql_client.fetch_bet(bet_id)
         if not original_bet:
             await interaction.response.send_message('A bet with this ID does not exist.', ephemeral=True)
-        (bet_id, date, author, opponent, amount, reason, active) = original_bet
-        # Verify interaction user is one of the active betters
-        if interaction.user.id != author and interaction.user.id != opponent:
-            await interaction.response.send_message('You are not one of the parties in this bet.', ephemeral=True)
-        elif winner.id != author and winner.id != opponent:
-            await interaction.response.send_message(
-                f'{winner.mention} is not one of the parties in this bet.', ephemeral=True)
+        else:
+            (bet_id, date, author, opponent, amount, reason, active) = original_bet
+            # Verify interaction user is one of the active betters
+            if interaction.user.id != author and interaction.user.id != opponent:
+                await interaction.response.send_message('You are not one of the parties in this bet.', ephemeral=True)
+            elif winner.id != author and winner.id != opponent:
+                await interaction.response.send_message(
+                    f'{winner.mention} is not one of the parties in this bet.', ephemeral=True)
+            else:
+                other_user = author if interaction.user.id == opponent else opponent
+                view = views.ConfirmBet(other_user.id)
+                amount_str = str(amount)
+                await interaction.response.send_message(
+                    f'{interaction.user.mention} said that {winner.mention} won the {amount_str} coin bet '
+                    f'for: "{reason}"\n{other_user.mention}, do you accept this result?', view=view)
+                await view.wait()
+                # Deal with view response
+                if view.value is None:
+                    # view expired
+                    await interaction.delete_original_response()
+                elif not view.value:
+                    # user declines
+                    await interaction.edit_original_response(
+                        content=f'{other_user.mention} declined that {winner.mention} won their {amount_str} '
+                                f'coin bet. Figure it out yourselves...',
+                        view=None)
+                else:
+                    # bet has gone through, start bet instance
+                    loser = interaction.user if interaction.user.id != winner.id else other_user
+                    await bot_helper.add_coin(interaction.guild, winner, amount)
+                    await bot_helper.add_coin(interaction.guild, loser, -amount)
+                    await interaction.edit_original_response(content=
+                                                             f'{winner.mention} won the {amount_str} '
+                                                             f' coin bet against {loser.mention} for: "{reason}"!\n',
+                                                             view=None)
 
         # Make the view for the other member to accept this result
 
@@ -178,7 +206,7 @@ class BotCog(commands.Cog):
             embed = discord.Embed(title='Active Bets', color=discord.Color.dark_green())
             for (bet_id, date, author, opponent, amount, reason, active) in bets:
                 title = f'{str(amount)} coin'
-                description = f'<@{author}> vs <@{opponent}>\n'\
+                description = f'<@{author}> vs <@{opponent}>\n' \
                               f'Reason: "{reason}"\n' \
                               f'Bet ID: {bet_id}'
                 embed.add_field(name=title, value=description, inline=False)
