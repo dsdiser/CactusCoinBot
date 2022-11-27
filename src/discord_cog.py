@@ -4,6 +4,8 @@ from typing import Literal
 
 import bot_helper
 import config
+import sql_client
+import views
 
 TIME_PERIOD = Literal["week", "month", "year"]
 
@@ -12,8 +14,7 @@ userCommands = {
     '/setup': 'Sets up the user\'s Cactus Coin role.',
     '/rankings': 'Outputs power rankings for the server.',
     '/give': 'Gives coin to a specific user, no strings attached.',
-    '/bet': 'Usage: `/bet [user] [amount] [reason]`\n'
-            'Starts a bet instance with another member, follow the button prompts to complete the bet.',
+    '/bet': 'Starts a bet with another member.',
     '/wheel': 'Usage: `/wheel [amount]`\n'
               'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
 }
@@ -77,21 +78,66 @@ class BotCog(commands.Cog):
 
     @discord.app_commands.command(name="give", description=userCommands["/give"])
     @discord.app_commands.describe(user="The user to give Cactus Coin to")
-    @discord.app_commands.describe(user="The amount of Cactus Coin to give")
+    @discord.app_commands.describe(amount="The amount of Cactus Coin to give")
     @discord.app_commands.guild_only()
     async def give(self, interaction: discord.Interaction, user: discord.Member, amount: int) -> None:
-        author_coin = bot_helper.get_coin(interaction.user.id)
+        author_coin = sql_client.get_coin(interaction.user.id)
         if author_coin - amount < config.getAttribute('debtLimit'):
-            await interaction.response.send_message('You don\'t have this much coin to give <:sadge:763188455248887819>',
-                                           ephemeral=True)
+            await interaction.response.send_message(
+                'You don\'t have this much coin to give <:sadge:763188455248887819>',
+                ephemeral=True)
         elif user.id == interaction.user.id:
             await interaction.response.send_message('Are you stupid or something?', ephemeral=True)
         elif amount > 0:
             await bot_helper.add_coin(interaction.guild, user, amount)
             await bot_helper.add_coin(interaction.guild, interaction.user, -amount)
-            await interaction.response.send_message(f'{str(amount)} sent to {user.display_name}', ephemeral=True)
+            await interaction.response.send_message(f'{str(amount)} coin sent to {user.display_name}', ephemeral=True)
         elif amount < 0:
             await interaction.response.send_message('Nice try <:shanechamp:910353567603384340>', ephemeral=True)
+
+    @discord.app_commands.command(name="bet", description=userCommands["/bet"])
+    @discord.app_commands.describe(user="The user to bet Cactus Coin against")
+    @discord.app_commands.describe(amount="The amount of Cactus Coin to bet")
+    @discord.app_commands.describe(reason="Short description of what the bet is for")
+    @discord.app_commands.guild_only()
+    async def bet_start(self, interaction: discord.Interaction, user: discord.Member, amount: int, reason: str) -> None:
+        author_coin = sql_client.get_coin(interaction.user.id)
+        opponent_coin = sql_client.get_coin(user.id)
+        if author_coin - amount < config.getAttribute('debtLimit'):
+            await interaction.response.send_message(
+                'You don\'t have this much coin to bet <:sadge:763188455248887819>',
+                ephemeral=True)
+        elif opponent_coin - amount < config.getAttribute('debtLimit'):
+            await interaction.response.send_message(
+                f'{user.mention} doesn\'t have this much coin to bet <:sadge:763188455248887819>',
+                ephemeral=True)
+        elif user.id == interaction.user.id:
+            await interaction.response.send_message('Are you stupid or something?', ephemeral=True)
+        elif amount > 0:
+            # use view to start interaction and get both users to accept the bet
+            view = views.ConfirmBet(user.id)
+            await interaction.response.send_message(
+                f'{interaction.user.mention} has challenged {user.mention} to a {str(amount)} coin bet '
+                f'for: "{reason}"\n{user.mention}, do you accept?', view=view)
+            await view.wait()
+            # Deal with view response
+            if view.value is None:
+                # view expired
+                await interaction.delete_original_response()
+            elif not view.value:
+                # user declines
+                await interaction.edit_original_response(content=
+                                                         f'{user.mention} has declined the {str(amount)} coin bet '
+                                                         f'from {interaction.user.mention} for: "{reason}".', view=None)
+            else:
+                # bet has gone through, start bet instance
+                bet_id = await bot_helper.start_bet(interaction.user, user, amount, reason)
+                await interaction.edit_original_response(content=
+                                                         f'{interaction.user.mention} has started a {str(amount)} coin bet '
+                                                         f'against {user.mention} for: "{reason}"\nID: {bet_id}',
+                                                         view=None)
+        elif amount <= 0:
+            await interaction.response.send_message('You can\'t do negative or zero bets', ephemeral=True)
 
     '''
     ADMIN COMMANDS
@@ -114,7 +160,8 @@ class BotCog(commands.Cog):
     @discord.app_commands.describe(persist="Whether the transaction should go on the record")
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
-    async def admin_adjust(self, interaction: discord.Interaction, user: discord.Member, amount: int, persist: bool) -> None:
+    async def admin_adjust(self, interaction: discord.Interaction, user: discord.Member, amount: int,
+                           persist: bool) -> None:
         await bot_helper.add_coin(interaction.guild, user, amount, persist=persist)
         await interaction.response.send_message(f'Added {str(amount)} to {user.display_name}', ephemeral=True)
 
@@ -123,7 +170,7 @@ class BotCog(commands.Cog):
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def balance(self, interaction: discord.Interaction, user: discord.Member) -> None:
-        balance = bot_helper.get_coin(user.id)
+        balance = sql_client.get_coin(user.id)
         if balance:
             await interaction.response.send_message(f'{user.display_name}\'s balance: {str(balance)}.', ephemeral=True)
         else:
@@ -146,7 +193,7 @@ class BotCog(commands.Cog):
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def clear(self, interaction: discord.Interaction, user: discord.Member) -> None:
-        bot_helper.remove_coin(user.id)
+        sql_client.remove_coin(user.id)
         await bot_helper.remove_role(interaction.guild, user)
         await interaction.response.send_message(f'{user.display_name}\'s coin has been cleared.', ephemeral=True)
 
@@ -155,7 +202,7 @@ class BotCog(commands.Cog):
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def reset(self, interaction: discord.Interaction, user: discord.Member) -> None:
-        amount = bot_helper.get_coin(user.id)
+        amount = sql_client.get_coin(user.id)
         await bot_helper.add_coin(interaction.guild, user, -(amount - config.getAttribute('defaultCoin')),
                                   persist=False)
         await bot_helper.update_role(interaction.guild, user, config.getAttribute('defaultCoin'))
@@ -167,7 +214,7 @@ class BotCog(commands.Cog):
         # BE CAREFUL WITH THIS IT WILL CLEAR OUT ALL COIN
         output = ''
         for member in interaction.guild.members:
-            amount = bot_helper.get_coin(member.id)
+            amount = sql_client.get_coin(member.id)
             await bot_helper.add_coin(interaction.guild, member, -(amount - config.getAttribute('defaultCoin')),
                                       persist=False)
             await bot_helper.update_role(interaction.guild, member, config.getAttribute('defaultCoin'))
@@ -182,12 +229,13 @@ class BotCog(commands.Cog):
         # BE CAREFUL WITH THIS IT WILL CLEAR OUT ALL COIN
         output = ''
         for member in interaction.guild.members:
-            coin = bot_helper.get_coin(member.id)
-            bot_helper.remove_coin(member.id)
-            bot_helper.remove_transactions(member.id)
+            coin = sql_client.get_coin(member.id)
+            sql_client.remove_coin(member.id)
+            sql_client.remove_transactions(member.id)
             await bot_helper.remove_role(interaction.guild, member)
             output += f'{member.display_name} - {str(coin)}\n'
-        await interaction.response.send_message('Everything cleared out...here\'s the short history just in case.\n' + output)
+        await interaction.response.send_message(
+            'Everything cleared out...here\'s the short history just in case.\n' + output)
 
 
 async def setup(bot: commands.Bot):

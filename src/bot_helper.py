@@ -1,6 +1,5 @@
 import discord
 import config
-import sql_client as sql
 import logging
 from io import BytesIO
 from PIL import Image, ImageDraw
@@ -13,6 +12,8 @@ from math import exp, cos, sin, radians
 import random
 from pytz import timezone
 
+from id_generator import random_id
+from sql_client import get_coin, add_transaction, add_bet, get_coin_rankings, get_transactions, update_coin, fetch_bet
 
 # Matplotlib styling
 plt.style.use('dark_background')
@@ -112,8 +113,31 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int, pe
     await update_role(guild, member, new_coin)
 
 
-# Gets outlier movements either positive or negative and outputs a chart of them
+async def start_bet(bet_author: discord.Member, bet_opponent: discord.Member, amount: int, reason: str) -> str:
+    """
+    Starts a bet instance
+    :param bet_author:
+    :param bet_opponent:
+    :param amount:
+    :param reason:
+    :return:
+    """
+    # generate id
+    bet_id = random_id()
+    while fetch_bet(bet_id):
+        bet_id = random_id()
+    add_bet(bet_id=bet_id, author_id=bet_author, opponent_id=bet_opponent, amount=amount, reason=reason)
+    return bet_id
+
+
 async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
+    """
+    Gets outlier movements either positive or negative and outputs a chart of them
+    :param guild:
+    :param time_period:
+    :param is_wins:
+    :return:
+    """
     # TODO: FIX TIME PERIODS, GET START OF TIME THEN CONVERT TO UTC
     start_period = ''
     if time_period == 'week':
@@ -346,65 +370,3 @@ async def generate_wheel(members: List[discord.Member]):
     wheel.save(outPath, save_all=True, append_images=wheel_imgs)
     winner = get_winner(len(members), win_ang)
     return outPath, winner
-
-
-#############################################################
-# SQL functions for updating DB state
-#############################################################
-def update_coin(member_id: int, amount: int):
-    logging.debug('Updating coin for: ' + str(member_id) + ': ' + str(amount))
-    cur = sql.connection.cursor()
-    cur.execute(
-        "INSERT INTO AMOUNTS(id, coin) VALUES ('{0}', {1}) ON CONFLICT(id) DO UPDATE SET coin=excluded.coin".format(
-            member_id, amount))
-    sql.connection.commit()
-    return amount
-
-
-def get_coin(member_id: int):
-    cur = sql.connection.cursor()
-    amount = cur.execute("SELECT coin from AMOUNTS WHERE id IS '{0}'".format(member_id)).fetchall()
-    if amount:
-        return amount[0][0]
-    return None
-
-
-# Clears out all coin from a member's entry
-def remove_coin(member_id: int):
-    cur = sql.connection.cursor()
-    cur.execute("DELETE FROM AMOUNTS WHERE id is '{0}'".format(member_id))
-    sql.connection.commit()
-
-
-# Adds a transaction entry for a specific member
-def add_transaction(member_id: int, amount: int):
-    cur = sql.connection.cursor()
-    cur.execute("INSERT INTO TRANSACTIONS(date, id, coin) VALUES (?, ?, ?)",
-                (datetime.utcnow(), member_id, amount))
-    sql.connection.commit()
-
-
-# Removes all transactions associated with a user
-def remove_transactions(member_id: int):
-    cur = sql.connection.cursor()
-    cur.execute("DELETE FROM TRANSACTIONS WHERE id is '{0}'".format(member_id))
-    sql.connection.commit()
-
-
-# Gets rankings of coin amounts
-def get_coin_rankings():
-    cur = sql.connection.cursor()
-    amounts = cur.execute("SELECT id, coin FROM AMOUNTS ORDER BY coin").fetchall()
-    if amounts:
-        return amounts
-    return None
-
-
-# Get all transactions between now and the given date, ordered from greatest to least.
-def get_transactions(time: datetime):
-    cur = sql.connection.cursor()
-    transactions = cur.execute("SELECT id, coin FROM TRANSACTIONS WHERE date BETWEEN ? AND ? ORDER BY coin",
-                               (time, datetime.utcnow())).fetchall()
-    if transactions:
-        return transactions
-    return None

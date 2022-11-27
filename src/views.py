@@ -1,6 +1,7 @@
 import discord
 import bot_helper
 import config
+import sql_client
 
 
 # Define a simple View that gives us a confirmation menu
@@ -11,20 +12,20 @@ class ConfirmBet(discord.ui.View):
         self.memberId = memberid
 
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
-    async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id == self.memberId:
             self.value = False
             self.stop()
         else:
-            await interaction.response.send_message('Hey this is not your decision to make.', ephemeral=True)
+            await interaction.response.send_message('This is not your decision to make.', ephemeral=True)
 
     @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
-    async def confirm(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id == self.memberId:
             self.value = True
             self.stop()
         else:
-            await interaction.response.send_message('Hey this is not your decision to make.', ephemeral=True)
+            await interaction.response.send_message('This is not your decision to make.', ephemeral=True)
 
 
 # Button prompts that let members decide who won the bet
@@ -95,7 +96,7 @@ class JoinWheel(discord.ui.View):
     @discord.ui.button(label='Join', style=discord.ButtonStyle.green)
     async def join(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user not in self.members:
-            currentCoin = bot_helper.get_coin(interaction.user.id)
+            currentCoin = sql_client.get_coin(interaction.user.id)
             if currentCoin - self.betAmount >= config.getAttribute('debtLimit'):
                 self.members.append(interaction.user)
                 await interaction.response.send_message('You\'re in the bet, good luck!', ephemeral=True)
