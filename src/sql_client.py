@@ -10,7 +10,7 @@ try:
     connection = sqlite3.connect(config.getAttribute('dbFile'))
     connection.execute('CREATE TABLE IF NOT EXISTS AMOUNTS (id integer PRIMARY KEY, coin integer)')
     connection.execute('CREATE TABLE IF NOT EXISTS TRANSACTIONS (id integer, coin integer, memo text, date date)')
-    connection.execute('CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text)')
+    connection.execute('CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text, active integer)')
 except sqlite3.Error as e:
     print(e)
 
@@ -98,7 +98,7 @@ def add_bet(bet_id: str, author_id: int, opponent_id: int, amount: int, reason: 
     :return:
     """
     cur = connection.cursor()
-    cur.execute("INSERT INTO BETS(id, date, author, opponent, amount, reason, active) VALUES (?, ?, ?, ?, ?, ?)",
+    cur.execute("INSERT INTO BETS(id, date, author, opponent, amount, reason, active) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (bet_id, datetime.utcnow(), author_id, opponent_id, amount, reason, True))
     connection.commit()
 
@@ -110,7 +110,7 @@ def fetch_bet(bet_id: str):
     :return:
     """
     cur = connection.cursor()
-    bet = cur.execute("SELECT * FROM BETS WHERE id is (?)", bet_id).fetchone()
+    bet = cur.execute("SELECT * FROM BETS WHERE id is (?)", (bet_id,)).fetchone()
     return bet
 
 
@@ -121,7 +121,7 @@ def remove_bet(bet_id: str):
     :return:
     """
     cur = connection.cursor()
-    cur.execute("DELETE FROM BETS WHERE id is (?)", bet_id)
+    cur.execute("DELETE FROM BETS WHERE id is (?)", (bet_id,))
     connection.commit()
 
 
@@ -157,7 +157,7 @@ def get_active_bets():
     :return:
     """
     cur = connection.cursor()
-    bets = cur.execute("SELECT id, coin FROM BETS WHERE active IS TRUE ORDER BY date").fetchall()
+    bets = cur.execute("SELECT * FROM BETS WHERE active = 1 ORDER BY date").fetchall()
     if bets:
         return bets
     return None

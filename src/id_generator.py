@@ -12,4 +12,4 @@ def random_id():
             if random.randrange(num):
                 continue
             line = aline
-        return line
+        return line.upper()

@@ -15,19 +15,22 @@ userCommands = {
     '/rankings': 'Outputs power rankings for the server.',
     '/give': 'Gives coin to a specific user, no strings attached.',
     '/bet': 'Starts a bet with another member.',
+    '/end-bet': 'Ends an existing bet with another member.',
+    '/cancel-bet': 'Cancels an existing bet with another member.',
+    '/list-bets': 'Lists the current active bets',
     '/wheel': 'Usage: `/wheel [amount]`\n'
               'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
 }
 
 adminCommands = {
-    '/adminhelp': '!ADMIN ONLY! Outputs a list of admin-specific commands.',
-    '/adminadjust': '!ADMIN ONLY! Adds/subtracts coin from user\'s wallet.',
+    '/admin-help': '!ADMIN ONLY! Outputs a list of admin-specific commands.',
+    '/admin-adjust': '!ADMIN ONLY! Adds/subtracts coin from user\'s wallet.',
     '/balance': '!ADMIN ONLY! Outputs a user\'s wallet amount stored in the database.',
     '/clear': '!ADMIN ONLY! Clears a user\'s wallet of all coin and removes coin role.',
-    '/bigwins': '!ADMIN ONLY! Outputs the greatest gains in the specified time period.',
+    '/big-wins': '!ADMIN ONLY! Outputs the greatest gains in the specified time period.',
     '/reset': '!ADMIN ONLY! Resets a user\'s wallet to the default starting amount',
-    '/softreset': '!ADMIN ONLY! Resets all users\'s wallets to the default starting amount',
-    '/fullclear': '!DEV ONLY! Clears all users\'s coins and clears all roles',
+    '/soft-reset': '!ADMIN ONLY! Resets all users\'s wallets to the default starting amount',
+    '/full-clear': '!DEV ONLY! Clears all users\'s coins and clears all roles',
 }
 
 
@@ -36,12 +39,16 @@ class BotCog(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         print(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
         print('------')
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> None:
+        """
+        Syncs slash commands to discord server
+        :param message:
+        """
         if message.content == 'pls sync':
             self.bot.tree.copy_global_to(guild=message.guild)
             await self.bot.tree.sync(guild=message.guild)
@@ -121,29 +128,67 @@ class BotCog(commands.Cog):
                 f'for: "{reason}"\n{user.mention}, do you accept?', view=view)
             await view.wait()
             # Deal with view response
+            amount_str = str(amount)
             if view.value is None:
                 # view expired
-                await interaction.delete_original_response()
+                await interaction.edit_original_response(content=
+                                                         f'{user.mention} didn\'t respond to the {amount_str} coin bet '
+                                                         f'from {interaction.user.mention} for: "{reason}".', view=None)
             elif not view.value:
                 # user declines
                 await interaction.edit_original_response(content=
-                                                         f'{user.mention} has declined the {str(amount)} coin bet '
+                                                         f'{user.mention} has declined the {amount_str} coin bet '
                                                          f'from {interaction.user.mention} for: "{reason}".', view=None)
             else:
                 # bet has gone through, start bet instance
                 bet_id = bot_helper.start_bet(interaction.user, user, amount, reason)
                 await interaction.edit_original_response(content=
-                                                         f'{interaction.user.mention} has started a {str(amount)} coin bet '
-                                                         f'against {user.mention} for: "{reason}"\nID: {bet_id}',
+                                                         f'{interaction.user.mention} has started a {amount_str} '
+                                                         f' coin bet against {user.mention} for: "{reason}"\n'
+                                                         f'ID: {bet_id}',
                                                          view=None)
         elif amount <= 0:
             await interaction.response.send_message('You can\'t do negative or zero bets', ephemeral=True)
+
+    @discord.app_commands.command(name="end-bet", description=userCommands["/end-bet"])
+    @discord.app_commands.describe(bet_id="The 4-letter bet ID associated with your bet")
+    @discord.app_commands.describe(winner="The user who won the bet")
+    @discord.app_commands.guild_only()
+    async def bet_end(self, interaction: discord.Interaction, bet_id: str, winner: discord.Member) -> None:
+        original_bet = sql_client.fetch_bet(bet_id)
+        if not original_bet:
+            await interaction.response.send_message('A bet with this ID does not exist.', ephemeral=True)
+        (bet_id, date, author, opponent, amount, reason, active) = original_bet
+        # Verify interaction user is one of the active betters
+        if interaction.user.id != author and interaction.user.id != opponent:
+            await interaction.response.send_message('You are not one of the parties in this bet.', ephemeral=True)
+        elif winner.id != author and winner.id != opponent:
+            await interaction.response.send_message(
+                f'{winner.mention} is not one of the parties in this bet.', ephemeral=True)
+
+        # Make the view for the other member to accept this result
+
+    @discord.app_commands.command(name="list-bets", description=userCommands["/list-bets"])
+    @discord.app_commands.guild_only()
+    async def list_bets(self, interaction: discord.Interaction) -> None:
+        bets = sql_client.get_active_bets()
+        if not bets:
+            await interaction.response.send_message('There are no active bets.')
+        else:
+            embed = discord.Embed(title='Active Bets', color=discord.Color.dark_green())
+            for (bet_id, date, author, opponent, amount, reason, active) in bets:
+                title = f'{str(amount)} coin'
+                description = f'<@{author}> vs <@{opponent}>\n'\
+                              f'Reason: "{reason}"\n' \
+                              f'Bet ID: {bet_id}'
+                embed.add_field(name=title, value=description, inline=False)
+            await interaction.response.send_message('', embed=embed)
 
     '''
     ADMIN COMMANDS
     '''
 
-    @discord.app_commands.command(name="adminhelp", description=adminCommands["/adminhelp"])
+    @discord.app_commands.command(name="admin-help", description=adminCommands["/admin-help"])
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def admin_help(self, interaction: discord.Interaction) -> None:
@@ -154,7 +199,7 @@ class BotCog(commands.Cog):
                 embed.add_field(name='\u200b', value='\u200b', inline=True)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @discord.app_commands.command(name="adminadjust", description=adminCommands["/adminadjust"])
+    @discord.app_commands.command(name="admin-adjust", description=adminCommands["/admin-adjust"])
     @discord.app_commands.describe(user="The user to give Cactus Coin to")
     @discord.app_commands.describe(amount="The amount of Cactus Coin to give")
     @discord.app_commands.describe(persist="Whether the transaction should go on the record")
@@ -176,7 +221,7 @@ class BotCog(commands.Cog):
         else:
             await interaction.response.send_message(f'{user.display_name}\'s has no balance.', ephemeral=True)
 
-    @discord.app_commands.command(name="bigwins", description=adminCommands["/bigwins"])
+    @discord.app_commands.command(name="big-wins", description=adminCommands["/big-wins"])
     @discord.app_commands.describe(period="The period over which to look at")
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
@@ -207,7 +252,7 @@ class BotCog(commands.Cog):
                                   persist=False)
         await bot_helper.update_role(interaction.guild, user, config.getAttribute('defaultCoin'))
 
-    @discord.app_commands.command(name="softreset", description=adminCommands["/softreset"])
+    @discord.app_commands.command(name="soft-reset", description=adminCommands["/soft-reset"])
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def soft_reset(self, interaction: discord.Interaction) -> None:
@@ -222,7 +267,7 @@ class BotCog(commands.Cog):
             f'Everyone\'s coin reset back to {config.getAttribute("defaultCoin")}...here\'s the short history just in '
             f'case.\n{output}')
 
-    @discord.app_commands.command(name="fullclear", description=adminCommands["/fullclear"])
+    @discord.app_commands.command(name="full-clear", description=adminCommands["/full-clear"])
     @discord.app_commands.check(bot_helper.is_dev)
     @discord.app_commands.guild_only()
     async def full_clear(self, interaction: discord.Interaction) -> None:
@@ -236,6 +281,18 @@ class BotCog(commands.Cog):
             output += f'{member.display_name} - {str(coin)}\n'
         await interaction.response.send_message(
             'Everything cleared out...here\'s the short history just in case.\n' + output)
+
+    @admin_help.error
+    @admin_adjust.error
+    @balance.error
+    @big_wins.error
+    @clear.error
+    @reset.error
+    @soft_reset.error
+    @full_clear.error
+    async def permissions_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, discord.app_commands.errors.CheckFailure):
+            await interaction.response.send_message('You do not have permissions to use that command.', ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

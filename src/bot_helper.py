@@ -126,10 +126,8 @@ def start_bet(bet_author: discord.Member, bet_opponent: discord.Member, amount: 
     bet_id = random_id()
     while fetch_bet(bet_id):
         bet_id = random_id()
-    add_bet(bet_id=bet_id, author_id=bet_author, opponent_id=bet_opponent, amount=amount, reason=reason)
+    add_bet(bet_id=bet_id, author_id=bet_author.id, opponent_id=bet_opponent.id, amount=amount, reason=reason)
     return bet_id
-
-
 
 
 async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
