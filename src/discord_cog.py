@@ -131,7 +131,7 @@ class BotCog(commands.Cog):
                                                          f'from {interaction.user.mention} for: "{reason}".', view=None)
             else:
                 # bet has gone through, start bet instance
-                bet_id = await bot_helper.start_bet(interaction.user, user, amount, reason)
+                bet_id = bot_helper.start_bet(interaction.user, user, amount, reason)
                 await interaction.edit_original_response(content=
                                                          f'{interaction.user.mention} has started a {str(amount)} coin bet '
                                                          f'against {user.mention} for: "{reason}"\nID: {bet_id}',

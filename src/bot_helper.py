@@ -113,7 +113,7 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int, pe
     await update_role(guild, member, new_coin)
 
 
-async def start_bet(bet_author: discord.Member, bet_opponent: discord.Member, amount: int, reason: str) -> str:
+def start_bet(bet_author: discord.Member, bet_opponent: discord.Member, amount: int, reason: str) -> str:
     """
     Starts a bet instance
     :param bet_author:
@@ -128,6 +128,8 @@ async def start_bet(bet_author: discord.Member, bet_opponent: discord.Member, am
         bet_id = random_id()
     add_bet(bet_id=bet_id, author_id=bet_author, opponent_id=bet_opponent, amount=amount, reason=reason)
     return bet_id
+
+
 
 
 async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
