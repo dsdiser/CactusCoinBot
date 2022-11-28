@@ -12,20 +12,23 @@ TIME_PERIOD = Literal["week", "month", "year"]
 userCommands = {
     '/help': 'Outputs a list of commands.',
     '/setup': 'Sets up the user\'s Cactus Coin role.',
+    '/balance': 'Displays a user\'s coin balance.',
     '/rankings': 'Outputs power rankings for the server.',
     '/give': 'Gives coin to a specific user, no strings attached.',
     '/bet': 'Starts a bet with another member.',
     '/end-bet': 'Ends an existing bet with another member.',
     '/cancel-bet': 'Cancels an existing bet with another member.',
-    '/list-bets': 'Lists the current active bets',
+    '/list-bets': 'Lists all the active bets',
+    '/my-bets': 'Lists all your active bets',
     '/wheel': 'Usage: `/wheel [amount]`\n'
               'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
 }
 
+# TODO: Add command to check balance for users
+
 adminCommands = {
     '/admin-help': '!ADMIN ONLY! Outputs a list of admin-specific commands.',
     '/admin-adjust': '!ADMIN ONLY! Adds/subtracts coin from user\'s wallet.',
-    '/balance': '!ADMIN ONLY! Outputs a user\'s wallet amount stored in the database.',
     '/clear': '!ADMIN ONLY! Clears a user\'s wallet of all coin and removes coin role.',
     '/big-wins': '!ADMIN ONLY! Outputs the greatest gains in the specified time period.',
     '/reset': '!ADMIN ONLY! Resets a user\'s wallet to the default starting amount',
@@ -84,6 +87,16 @@ class BotCog(commands.Cog):
     async def setup(self, interaction: discord.Interaction, user: discord.Member) -> None:
         await bot_helper.verify_coin(interaction.guild, user)
         await interaction.response.send_message(f'Verified coin for: {user.display_name}', ephemeral=True)
+
+    @discord.app_commands.command(name="balance", description=userCommands["/balance"])
+    @discord.app_commands.describe(user="The user to see the amount of coin amount for")
+    @discord.app_commands.guild_only()
+    async def balance(self, interaction: discord.Interaction, user: discord.Member) -> None:
+        balance = sql_client.get_coin(user.id)
+        if balance:
+            await interaction.response.send_message(f'{user.display_name}\'s balance: {str(balance)}.', ephemeral=True)
+        else:
+            await interaction.response.send_message(f'{user.display_name}\'s has no balance.', ephemeral=True)
 
     @discord.app_commands.command(name="rankings", description=userCommands["/rankings"])
     @discord.app_commands.guild_only()
@@ -301,6 +314,21 @@ class BotCog(commands.Cog):
                     embed.add_field(name='\u200b', value='\u200b', inline=True)
             await interaction.response.send_message('', embed=embed)
 
+    @discord.app_commands.command(name="my-bets", description=userCommands["/my-bets"])
+    @discord.app_commands.guild_only()
+    async def my_bets(self, interaction: discord.Interaction) -> None:
+        bets = sql_client.get_user_bets(interaction.user.id)
+        if not bets:
+            await interaction.response.send_message('You have no active bets.')
+        else:
+            embed = discord.Embed(title='Your Bets', color=discord.Color.dark_green())
+            for idx, bet in enumerate(bets):
+                add_bet_to_embed(embed, bet)
+                # column override for proper formatting in Discord
+                if idx % 2 == 1:
+                    embed.add_field(name='\u200b', value='\u200b', inline=True)
+            await interaction.response.send_message('', embed=embed, ephemeral=True)
+
     '''
     ADMIN COMMANDS
     '''
@@ -329,17 +357,6 @@ class BotCog(commands.Cog):
             f'Added {format(amount, ",d")} to {user.display_name}',
             ephemeral=True
         )
-
-    @discord.app_commands.command(name="balance", description=adminCommands["/balance"])
-    @discord.app_commands.describe(user="The user to check database's coin amount for")
-    @discord.app_commands.check(bot_helper.is_admin)
-    @discord.app_commands.guild_only()
-    async def balance(self, interaction: discord.Interaction, user: discord.Member) -> None:
-        balance = sql_client.get_coin(user.id)
-        if balance:
-            await interaction.response.send_message(f'{user.display_name}\'s balance: {str(balance)}.', ephemeral=True)
-        else:
-            await interaction.response.send_message(f'{user.display_name}\'s has no balance.', ephemeral=True)
 
     @discord.app_commands.command(name="big-wins", description=adminCommands["/big-wins"])
     @discord.app_commands.describe(period="The period over which to look at")

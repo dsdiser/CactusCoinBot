@@ -122,7 +122,7 @@ def remove_bet(bet_id: str):
     :return:
     """
     cur = connection.cursor()
-    cur.execute("DELETE FROM BETS WHERE id is (?)", (bet_id,))
+    cur.execute("UPDATE BETS SET active = 0 WHERE id is (?)", (bet_id,))
     connection.commit()
 
 
@@ -145,8 +145,10 @@ def get_transactions(time: datetime):
     :return:
     """
     cur = connection.cursor()
-    transactions = cur.execute("SELECT id, coin FROM TRANSACTIONS WHERE date BETWEEN ? AND ? ORDER BY coin",
-                               (time, datetime.utcnow())).fetchall()
+    transactions = cur.execute(
+        "SELECT id, coin FROM TRANSACTIONS WHERE date BETWEEN ? AND ? ORDER BY coin",
+        (time, datetime.utcnow())
+    ).fetchall()
     if transactions:
         return transactions
     return None
@@ -159,6 +161,21 @@ def get_active_bets():
     """
     cur = connection.cursor()
     bets = cur.execute("SELECT * FROM BETS WHERE active = 1 ORDER BY date").fetchall()
+    if bets:
+        return bets
+    return None
+
+
+def get_user_bets(user_id: int):
+    """
+    Get all active bets for a specific user
+    :return:
+    """
+    cur = connection.cursor()
+    bets = cur.execute(
+        "SELECT * FROM BETS WHERE active = 1 AND (opponent = (?) OR author = (?)) ORDER BY date",
+        (user_id, user_id)
+    ).fetchall()
     if bets:
         return bets
     return None
