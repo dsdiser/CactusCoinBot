@@ -52,7 +52,7 @@ def is_dev(interaction: discord.Interaction):
 async def create_role(guild: discord.Guild, amount: int):
     # avoid duplicating roles whenever possible
     prefix = config.getAttribute('rolePrefix', 'Cactus Coin: ')
-    new_role_name = f'{prefix}: ' + str(amount)
+    new_role_name = f'{prefix}{format(amount, ",d")}'
     existing_role = [role for role in guild.roles if role.name == new_role_name]
     if existing_role:
         return existing_role[0]

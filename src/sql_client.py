@@ -19,6 +19,7 @@ def handle_exit():
     if connection:
         connection.close()
 
+
 atexit.register(handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 signal.signal(signal.SIGINT, handle_exit)
