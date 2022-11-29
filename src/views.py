@@ -1,12 +1,16 @@
 import discord
+
+import bot_helper
 import config
 import sql_client
+from trivia_handler import Question
 
 
 # Define a simple View that gives us a confirmation menu
 class ConfirmBet(discord.ui.View):
     def __init__(self, memberid: int):
-        super().__init__()
+        # 10 second timeout
+        super().__init__(timeout=600.0)
         self.value = None
         self.memberId = memberid
 
@@ -25,6 +29,52 @@ class ConfirmBet(discord.ui.View):
             self.stop()
         else:
             await interaction.response.send_message('This is not your decision to make.', ephemeral=True)
+
+
+class Dropdown(discord.ui.Select):
+    def __init__(self, question: Question, amount: int):
+        self.interacted_users = []
+        self.question = question
+        self.amount = amount
+        self.selectedOption = ''
+        # Set the options that will be presented inside the dropdown
+        options = [discord.SelectOption(label=choice) for choice in question.get_choices()]
+
+        # The placeholder is what will be shown when no option is chosen
+        # The min and max values indicate we can only pick one of the three options
+        # The options parameter defines the dropdown options. We defined this above
+        super().__init__(placeholder='Choose your answer here...', min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Use the interaction object to send a response message containing
+        # the user's favourite colour or choice. The self object refers to the
+        # Select object, and the values attribute gets a list of the user's
+        # selected options. We only want the first one.
+        if interaction.user.id in self.interacted_users:
+            await interaction.response.send_message(f'You\'ve already given your response.', ephemeral=True)
+        else:
+            self.interacted_users.append(interaction.user.id)
+            if self.values[0] == self.question.correct_answer:
+                await bot_helper.add_coin(interaction.guild, interaction.user, self.amount)
+                sql_client.update_correct_answer_count(interaction.user.id)
+                await interaction.response.send_message(
+                    f'Correct answer! You\'ve received {format(self.amount, ",d")} coin!',
+                    ephemeral=True
+                )
+            else:
+                sql_client.update_incorrect_answer_count(interaction.user.id)
+                await interaction.response.send_message(
+                    f'Incorrect answer {config.getAttribute("sadEmote", "")} no coin awarded.',
+                    ephemeral=True
+                )
+
+
+class DropdownView(discord.ui.View):
+    def __init__(self, question: Question, amount: int = 25):
+        super().__init__()
+
+        # Adds the dropdown to our view object.
+        self.add_item(Dropdown(question=question, amount=amount))
 
 
 class JoinWheel(discord.ui.View):

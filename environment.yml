@@ -12,3 +12,4 @@ dependencies:
     - discord.py
     - pyspellchecker
     - pytz
+    - requests

@@ -1,11 +1,15 @@
+import datetime
+
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from typing import Literal
 
 import bot_helper
 import config
 import sql_client
 import views
+from trivia_handler import get_trivia_question
+from pytz import timezone
 
 TIME_PERIOD = Literal["week", "month", "year"]
 
@@ -24,8 +28,6 @@ userCommands = {
               'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
 }
 
-# TODO: Add command to check balance for users
-
 adminCommands = {
     '/admin-help': '!ADMIN ONLY! Outputs a list of admin-specific commands.',
     '/admin-adjust': '!ADMIN ONLY! Adds/subtracts coin from user\'s wallet.',
@@ -35,6 +37,10 @@ adminCommands = {
     '/soft-reset': '!ADMIN ONLY! Resets all users\'s wallets to the default starting amount',
     '/full-clear': '!DEV ONLY! Clears all users\'s coins and clears all roles',
 }
+
+est = timezone('US/Eastern')
+# Daily trivia at 9AM EST
+trivia_time = datetime.time(hour=9, tzinfo=est)
 
 
 def add_bet_to_embed(embed: discord.Embed, bet, show_id=True):
@@ -49,6 +55,10 @@ def add_bet_to_embed(embed: discord.Embed, bet, show_id=True):
 class BotCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self.trivia_loop.start()
+
+    def cog_unload(self):
+        self.trivia_loop.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -113,8 +123,9 @@ class BotCog(commands.Cog):
         author_coin = sql_client.get_coin(interaction.user.id)
         if author_coin - amount < config.getAttribute('debtLimit'):
             await interaction.response.send_message(
-                'You don\'t have this much coin to give <:sadge:763188455248887819>',
-                ephemeral=True)
+                f'You don\'t have this much coin to give {config.getAttribute("sadEmote", "")}',
+                ephemeral=True
+            )
         elif user.id == interaction.user.id:
             await interaction.response.send_message('Are you stupid or something?', ephemeral=True)
         elif amount > 0:
@@ -137,11 +148,11 @@ class BotCog(commands.Cog):
         opponent_coin = sql_client.get_coin(user.id)
         if author_coin - amount < config.getAttribute('debtLimit'):
             await interaction.response.send_message(
-                'You don\'t have this much coin to bet <:sadge:763188455248887819>',
+                f'You don\'t have this much coin to bet {config.getAttribute("sadEmote", "")}',
                 ephemeral=True)
         elif opponent_coin - amount < config.getAttribute('debtLimit'):
             await interaction.response.send_message(
-                f'{user.mention} doesn\'t have this much coin to bet <:sadge:763188455248887819>',
+                f'{user.mention} doesn\'t have this much coin to bet {config.getAttribute("sadEmote", "")}',
                 ephemeral=True)
         elif user.id == interaction.user.id:
             await interaction.response.send_message('You can\'t bet against yourself silly', ephemeral=True)
@@ -176,6 +187,9 @@ class BotCog(commands.Cog):
             else:
                 # bet has gone through, start bet instance
                 bet_id = bot_helper.start_bet(interaction.user, user, amount, reason)
+                embed = discord.Embed(title='', color=discord.Color.dark_blue())
+                bet_entry = (bet_id, None, interaction.user.id, user.id, amount, reason, None)
+                add_bet_to_embed(embed, bet_entry, show_id=False)
                 await bot_helper.add_coin(interaction.guild, interaction.user, -amount)
                 await bot_helper.add_coin(interaction.guild, user, -amount)
                 await interaction.edit_original_response(
@@ -207,7 +221,6 @@ class BotCog(commands.Cog):
                 other_user_id = author if interaction.user.id == opponent else opponent
                 other_user = interaction.guild.get_member(other_user_id)
                 loser = interaction.user if interaction.user.id != winner.id else other_user
-                amount_str = format(amount, ',d')
                 embed = discord.Embed(title='', color=discord.Color.green())
                 add_bet_to_embed(embed, original_bet)
                 # if the user is the loser, we can assume they're telling the truth. Otherwise we must confirm
@@ -329,6 +342,13 @@ class BotCog(commands.Cog):
                     embed.add_field(name='\u200b', value='\u200b', inline=True)
             await interaction.response.send_message('', embed=embed, ephemeral=True)
 
+    @discord.app_commands.command(name="trivia", description="Testing trivia shit")
+    @discord.app_commands.guild_only()
+    async def trivia(self, interaction: discord.Interaction) -> None:
+        question = get_trivia_question()
+        dropdown = views.DropdownView(question)
+        await interaction.response.send_message(question.question, view=dropdown)
+
     '''
     ADMIN COMMANDS
     '''
@@ -430,6 +450,18 @@ class BotCog(commands.Cog):
     async def permissions_error(self, interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.CheckFailure):
             await interaction.response.send_message('You do not have permissions to use that command.', ephemeral=True)
+
+    '''
+    LOOPING COMMANDS
+    '''
+    @tasks.loop(time=trivia_time)
+    async def trivia_loop(self):
+        question = get_trivia_question()
+        dropdown = views.DropdownView(question)
+        guild = await self.bot.fetch_guild(guild_id)
+        channel = await guild.fetch_channel(channel_id)
+        prompt = f"Today's daily trivia question!\n{question.question}"
+        await channel.send(content=prompt, view=dropdown)
 
 
 async def setup(bot: commands.Bot):

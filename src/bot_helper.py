@@ -7,7 +7,7 @@ import os
 from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from math import exp, cos, sin, radians
 import random
 from pytz import timezone
@@ -30,8 +30,8 @@ mask_draw = ImageDraw.Draw(icon_mask)
 mask_draw.ellipse((0, 0, 128, 128), fill=255)
 
 
-# Checks admin status for a member for specific admin only functionality.
 def is_admin(interaction: discord.Interaction):
+    """Checks admin status for a member for specific admin only functionality."""
     member = interaction.user
     roleNames = [role.name for role in member.roles if
                  'CactusCoinDev' in role.name or 'President' in role.name or 'Vice President' in role.name]
@@ -48,8 +48,8 @@ def is_dev(interaction: discord.Interaction):
     return False
 
 
-# Creates a cactus coin role that denotes the amount of coin a member has.
 async def create_role(guild: discord.Guild, amount: int):
+    """Creates a cactus coin role that denotes the amount of coin a member has."""
     # avoid duplicating roles whenever possible
     prefix = config.getAttribute('rolePrefix', 'Cactus Coin: ')
     new_role_name = f'{prefix}{format(amount, ",d")}'
@@ -60,8 +60,8 @@ async def create_role(guild: discord.Guild, amount: int):
                                    color=discord.Color.dark_gold())
 
 
-# Removes the cactus coin role from the member's role and from the guild if necessary
 async def remove_role(guild: discord.Guild, member: discord.Member):
+    """ Removes the cactus coin role from the member's role and from the guild if necessary """
     prefix = config.getAttribute('rolePrefix', 'Cactus Coin')
     cactus_roles = [role for role in member.roles if prefix in role.name]
     if cactus_roles:
@@ -71,8 +71,8 @@ async def remove_role(guild: discord.Guild, member: discord.Member):
         await clear_old_roles(guild)
 
 
-# Verifies the state of a user's role denoting their coin, creates it if it doesn't exist.
 async def verify_coin(guild: discord.Guild, member: discord.Member, amount: int = config.getAttribute('defaultCoin')):
+    """ Verifies the state of a user's role denoting their coin, creates it if it doesn't exist. """
     # update coin for member who has cactus coin in database
     db_amount = get_coin(member.id)
     prefix = config.getAttribute('rolePrefix', 'Cactus Coin')
@@ -89,22 +89,39 @@ async def verify_coin(guild: discord.Guild, member: discord.Member, amount: int 
         await member.add_roles(role, reason=f'Cactus Coin: Role updated for {member.name} to {str(amount)}')
 
 
-# Deletes all old cactus coin roles
 async def clear_old_roles(guild: discord.Guild):
+    """
+    Deletes all old cactus coin roles
+    :param guild:
+    :return:
+    """
     emptyRoles = [role for role in guild.roles if 'Cactus Coin:' in role.name and len(role.members) == 0]
     for role in emptyRoles:
         await role.delete(reason='Cactus Coin: Removing unused role.')
 
 
-# Deletes old role and calls function to update new role displaying coin amount
 async def update_role(guild: discord.Guild, member: discord.Member, amount: int):
+    """
+    Deletes old role and calls function to update new role displaying coin amount
+    :param guild:
+    :param member:
+    :param amount:
+    :return:
+    """
     await remove_role(guild, member)
     role = await create_role(guild, amount)
     await member.add_roles(role, reason=f'Cactus Coin: Role updated for {member.name} to {str(amount)}')
 
 
-# Adds a specified coin amount to a member's role and stores in the database
 async def add_coin(guild: discord.Guild, member: discord.Member, amount: int, persist: bool = True):
+    """
+    Adds a specified coin amount to a member's role and stores in the database
+    :param guild:
+    :param member:
+    :param amount:
+    :param persist:
+    :return:
+    """
     current_coin = get_coin(member.id)
     new_coin = max(current_coin + amount, config.getAttribute('debtLimit'))
     update_coin(member.id, new_coin)
@@ -141,7 +158,7 @@ async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
     # TODO: FIX TIME PERIODS, GET START OF TIME THEN CONVERT TO UTC
     start_period = ''
     if time_period == 'week':
-        start_period = datetime.now() - datetime.timedelta(days=datetime.now().weekday())
+        start_period = datetime.now() - timedelta(days=datetime.now().weekday())
     elif time_period == 'month':
         start_period = datetime.today().replace(day=1)
     elif time_period == 'year':

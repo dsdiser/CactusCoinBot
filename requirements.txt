@@ -5,3 +5,4 @@ matplotlib
 discord.py
 pyspellchecker
 pytz
+requests

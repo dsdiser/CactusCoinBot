@@ -8,7 +8,7 @@ import signal
 
 try:
     connection = sqlite3.connect(config.getAttribute('dbFile'))
-    connection.execute('CREATE TABLE IF NOT EXISTS AMOUNTS (id integer PRIMARY KEY, coin integer)')
+    connection.execute('CREATE TABLE IF NOT EXISTS AMOUNTS (id integer PRIMARY KEY, coin integer, correct_answers integer, incorrect_answers integer)')
     connection.execute('CREATE TABLE IF NOT EXISTS TRANSACTIONS (id integer, coin integer, memo text, date date)')
     connection.execute('CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text, active integer)')
 except sqlite3.Error as e:
@@ -179,3 +179,52 @@ def get_user_bets(user_id: int):
     if bets:
         return bets
     return None
+
+
+def update_correct_answer_count(user_id: int):
+    """
+    Adds one to the user's correct answer count if it exists, starts one otherwise
+    :param user_id:
+    :return:
+    """
+    cur = connection.cursor()
+    cur.execute("UPDATE AMOUNTS SET correct_answers = correct_answers + 1 WHERE id is (?)", (user_id,))
+    connection.commit()
+
+
+def update_incorrect_answer_count(user_id: int):
+    """
+    Adds one to the user's incorrect answer count if it exists, starts one otherwise
+    :param user_id:
+    :return:
+    """
+    cur = connection.cursor()
+    cur.execute("UPDATE AMOUNTS SET incorrect_answers = incorrect_answers + 1 WHERE id is (?)", (user_id,))
+    connection.commit()
+
+
+def get_answer_counts(user_id: int):
+    """
+    Gets a user's number of correct and incorrect answers to trivia questions
+    :param user_id:
+    :return:
+    """
+    cur = connection.cursor()
+    counts = cur.execute(
+        "SELECT correct_answers, incorrect_answers FROM AMOUNTS WHERE id is (?)",
+        (user_id,)
+    ).fetchone()
+    return counts
+
+
+def get_answer_rankings():
+    """
+    Gets rankings of trivia amounts
+    :return:
+    """
+    cur = connection.cursor()
+    amounts = cur.execute("SELECT id, correct_answers FROM AMOUNTS ORDER BY coin").fetchall()
+    if amounts:
+        return amounts
+    return None
+
