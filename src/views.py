@@ -32,7 +32,7 @@ class ConfirmBet(discord.ui.View):
 
 
 class Dropdown(discord.ui.Select):
-    def __init__(self, question: Question, amount: int):
+    def __init__(self, question: Question, disabled: bool, amount: int):
         self.interacted_users = []
         self.question = question
         self.amount = amount
@@ -43,7 +43,13 @@ class Dropdown(discord.ui.Select):
         # The placeholder is what will be shown when no option is chosen
         # The min and max values indicate we can only pick one of the three options
         # The options parameter defines the dropdown options. We defined this above
-        super().__init__(placeholder='Choose your answer here...', min_values=1, max_values=1, options=options)
+        super().__init__(
+            placeholder='Choose your answer here...',
+            min_values=1,
+            max_values=1,
+            options=options,
+            disabled=disabled
+        )
 
     async def callback(self, interaction: discord.Interaction):
         # Use the interaction object to send a response message containing
@@ -57,12 +63,20 @@ class Dropdown(discord.ui.Select):
             if self.values[0] == self.question.correct_answer:
                 await bot_helper.add_coin(interaction.guild, interaction.user, self.amount)
                 sql_client.update_correct_answer_count(interaction.user.id)
+                # Updates the channel's list of incorrect users
+                correct_users = sql_client.get_correct_users(interaction.channel_id)
+                correct_users.append(interaction.user.id)
+                sql_client.update_correct_users(interaction.channel_id, correct_users)
                 await interaction.response.send_message(
                     f'Correct answer! You\'ve received {format(self.amount, ",d")} coin!',
                     ephemeral=True
                 )
             else:
                 sql_client.update_incorrect_answer_count(interaction.user.id)
+                # Updates the channel's list of incorrect users
+                incorrect_users = sql_client.get_incorrect_users(interaction.channel_id)
+                incorrect_users.append(interaction.user.id)
+                sql_client.update_incorrect_users(interaction.channel_id, incorrect_users)
                 await interaction.response.send_message(
                     f'Incorrect answer {config.getAttribute("sadEmote", "")} no coin awarded.',
                     ephemeral=True
@@ -70,11 +84,10 @@ class Dropdown(discord.ui.Select):
 
 
 class DropdownView(discord.ui.View):
-    def __init__(self, question: Question, amount: int = 25):
+    def __init__(self, question: Question, disabled: bool = False, amount: int = 25):
         super().__init__()
-
         # Adds the dropdown to our view object.
-        self.add_item(Dropdown(question=question, amount=amount))
+        self.add_item(Dropdown(question=question, disabled=disabled, amount=amount))
 
 
 class JoinWheel(discord.ui.View):
@@ -92,14 +105,21 @@ class JoinWheel(discord.ui.View):
                 await interaction.response.send_message('You\'re in the bet, good luck!', ephemeral=True)
                 names = [member.display_name for member in self.members]
                 joined_names = ', '.join(names)
-                await interaction.message.edit(content=
-                                               f'It\'s time to spin the wheel! The bet is {str(self.betAmount)} coin, and the winner takes all!\n'
-                                               f'Click "Join" to play! You have 2 minutes to join the bet.\n'
-                                               f'Current bettors: {joined_names}')
+                await interaction.message.edit(
+                    content=f'It\'s time to spin the wheel! The bet is {str(self.betAmount)} coin, and the winner takes all!\n'
+                            f'Click "Join" to play! You have 2 minutes to join the bet.\n'
+                            f'Current bettors: {joined_names}'
+                )
             else:
-                await interaction.response.send_message('Sorry, you don\'t have enough money to join this bet.', ephemeral=True)
+                await interaction.response.send_message(
+                    'Sorry, you don\'t have enough money to join this bet.',
+                    ephemeral=True
+                )
         else:
-            await interaction.response.send_message('You\'ve already joined the bet, be patient.', ephemeral=True)
+            await interaction.response.send_message(
+                'You\'ve already joined the bet, be patient.',
+                ephemeral=True
+            )
 
     @discord.ui.button(label='Cancel', style=discord.ButtonStyle.red)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -108,7 +128,10 @@ class JoinWheel(discord.ui.View):
             await interaction.response.send_message('You got it, cancelling the bet.', ephemeral=True)
             self.stop()
         else:
-            await interaction.response.send_message('Sorry, only the person who started the bet can stop it.', ephemeral=True)
+            await interaction.response.send_message(
+                'Sorry, only the person who started the bet can stop it.',
+                ephemeral=True
+            )
 
     @discord.ui.button(label='Start', style=discord.ButtonStyle.blurple)
     async def start(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -116,5 +139,7 @@ class JoinWheel(discord.ui.View):
             await interaction.response.send_message('You got it, starting the bet.', ephemeral=True)
             self.stop()
         else:
-            await interaction.response.send_message('Sorry, only the person who started the bet can start it.',
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                'Sorry, only the person who started the bet can start it.',
+                ephemeral=True
+            )

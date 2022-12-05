@@ -1,14 +1,15 @@
 import datetime
 
 import discord
+from discord import NotFound
 from discord.ext import commands, tasks
-from typing import Literal
+from typing import Literal, List, Optional
 
 import bot_helper
 import config
 import sql_client
 import views
-from trivia_handler import get_trivia_question
+from trivia_handler import Question, get_trivia_questions
 from pytz import timezone
 
 TIME_PERIOD = Literal["week", "month", "year"]
@@ -36,11 +37,11 @@ adminCommands = {
     '/reset': '!ADMIN ONLY! Resets a user\'s wallet to the default starting amount',
     '/soft-reset': '!ADMIN ONLY! Resets all users\'s wallets to the default starting amount',
     '/full-clear': '!DEV ONLY! Clears all users\'s coins and clears all roles',
+    '/trivia-start': '!ADMIN ONLY! Enables the current channel for trivia questions',
+    '/trivia-end': '!ADMIN ONLY! Disables the current channel for trivia questions',
 }
 
 est = timezone('US/Eastern')
-# Daily trivia at 9AM EST
-trivia_time = datetime.time(hour=9, tzinfo=est)
 
 
 def add_bet_to_embed(embed: discord.Embed, bet, show_id=True):
@@ -55,10 +56,6 @@ def add_bet_to_embed(embed: discord.Embed, bet, show_id=True):
 class BotCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.trivia_loop.start()
-
-    def cog_unload(self):
-        self.trivia_loop.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -345,7 +342,7 @@ class BotCog(commands.Cog):
     @discord.app_commands.command(name="trivia", description="Testing trivia shit")
     @discord.app_commands.guild_only()
     async def trivia(self, interaction: discord.Interaction) -> None:
-        question = get_trivia_question()
+        question = get_trivia_questions()[0]
         dropdown = views.DropdownView(question)
         await interaction.response.send_message(question.question, view=dropdown)
 
@@ -451,18 +448,107 @@ class BotCog(commands.Cog):
         if isinstance(error, discord.app_commands.errors.CheckFailure):
             await interaction.response.send_message('You do not have permissions to use that command.', ephemeral=True)
 
-    '''
-    LOOPING COMMANDS
-    '''
-    @tasks.loop(time=trivia_time)
-    async def trivia_loop(self):
-        question = get_trivia_question()
-        dropdown = views.DropdownView(question)
-        guild = await self.bot.fetch_guild(guild_id)
-        channel = await guild.fetch_channel(channel_id)
-        prompt = f"Today's daily trivia question!\n{question.question}"
-        await channel.send(content=prompt, view=dropdown)
+
+# Daily trivia at 9AM EST
+trivia_time = datetime.time(hour=9, tzinfo=est)
+
+
+class TriviaCog(commands.Cog):
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
+        self.question_offset = 50
+        self.question_offset_str = str(self.question_offset)
+        self.questions = []
+        self.populate_question_list()
+        self.current_question: Optional[Question] = None
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        print(f'Bot logged in and enabled for Trivia')
+        print('------')
+        self.trivia_loop.start()
+
+    def cog_unload(self):
+        self.trivia_loop.cancel()
+
+    def populate_question_list(self) -> None:
+        """Repopulates the list of questions"""
+        self.questions = get_trivia_questions(self.question_offset_str)
+
+    def get_question(self, idx: int) -> Question:
+        """Gets a question from the question list and repopulates the list if we run out of questions"""
+        relative_idx = idx % self.question_offset
+        if relative_idx == 0 and idx >= self.question_offset:
+            self.populate_question_list()
+        return self.questions[relative_idx]
+
+    @discord.app_commands.command(name="trivia-start", description=adminCommands["/trivia-start"])
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_start(self, interaction: discord.Interaction) -> None:
+        sql_client.add_channel(interaction.channel_id)
+        await interaction.response.send_message(f'{interaction.channel.name} enabled for trivia questions.')
+
+    @discord.app_commands.command(name="trivia-end", description=adminCommands["/trivia-end"])
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_end(self, interaction: discord.Interaction) -> None:
+        sql_client.remove_channel(interaction.channel_id)
+        await interaction.response.send_message(f'{interaction.channel.name} disabled for trivia questions.')
+
+    # TODO: Reset trivia questions list command
+
+    # TODO: Reset today's trivia question command
+
+    # TODO: Manually submitted trivia question command
+
+    # TODO:
+
+
+    # @tasks.loop(time=trivia_time)
+    @tasks.loop(minutes=15.0, count=2)
+    async def trivia_loop(self) -> None:
+        channels = sql_client.get_channels()
+        for (channel_id, message_id) in channels:
+            channel = await self.bot.fetch_channel(channel_id)
+            # Handle previous day's message
+            if message_id:
+                try:
+                    message = await channel.fetch_message(message_id)
+                except NotFound:
+                    message = None
+                if message is not None and self.current_question is None:
+                    # If we don't have the question we don't know the answer, so we just wipe the question
+                    await message.delete()
+                elif message is not None and self.current_question is not None:
+                    # Provide the set of people who got the answer correct and incorrect
+                    correct_users = sql_client.get_correct_users(channel_id)
+                    incorrect_users = sql_client.get_incorrect_users(channel_id)
+                    embed = discord.Embed(title='Results', color=discord.Color.purple())
+                    correct_user_str = '\n'.join([f'<@{str(user_id)}>' for user_id in correct_users]) or '\u200b'
+                    incorrect_user_str = '\n'.join([f'<@{str(user_id)}>' for user_id in incorrect_users]) or '\u200b'
+                    embed.add_field(name='Correct', value=correct_user_str)
+                    embed.add_field(name='Incorrect', value=incorrect_user_str)
+                    choices = [
+                        f'__**{choice}**__' if choice == self.current_question.correct_answer
+                        else choice
+                        for choice in self.current_question.get_choices()
+                    ]
+                    await message.edit(
+                        content=f'> {self.current_question.question}\n'
+                                f'{", ".join(choices)}\n',
+                        embed=embed,
+                        view=None
+                    )
+
+            # Send today's trivia question
+            self.current_question = self.get_question(self.trivia_loop.current_loop)
+            dropdown = views.DropdownView(self.current_question)
+            prompt = f'Today\'s daily trivia question!\n{self.current_question.question}'
+            message = await channel.send(content=prompt, view=dropdown)
+            sql_client.update_message_id(channel_id, message.id)
 
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(BotCog(bot))
+    await bot.add_cog(TriviaCog(bot))

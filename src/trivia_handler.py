@@ -1,3 +1,4 @@
+from html import unescape
 from typing import Literal, List
 from dataclasses import dataclass
 from random import shuffle
@@ -12,16 +13,7 @@ def html_decode(s):
     Returns the ASCII decoded version of the given HTML string. This does
     NOT remove normal HTML tags like <p>.
     """
-    htmlCodes = (
-            ('\'', '&#039;'),
-            ('', '&quot;'),
-            ('>', '&gt;'),
-            ('<', '&lt;'),
-            ('&', '&amp;')
-        )
-    for code in htmlCodes:
-        s = s.replace(code[1], code[0])
-    return s
+    return unescape(s)
 
 
 @dataclass
@@ -69,13 +61,15 @@ class TriviaResponse:
         )
 
 
-def get_trivia_question(category: str = '15', difficulty: Difficulty = 'easy') -> Question:
+def get_trivia_questions(amount: str = '1', category: str = '15', difficulty: Difficulty = 'easy') -> List[Question]:
     """
     Uses https://opentdb.com/api_config.php to fetch a trivia question and converts it to a question object we can use
+    :param amount:
     :param category:
     :param difficulty:
     :return:
     """
-    r = requests.get(f'https://opentdb.com/api.php?amount=1&category={category}&difficulty={difficulty}')
+    # TODO: enable the entering of custom trivia questions through an admin command
+    r = requests.get(f'https://opentdb.com/api.php?amount={amount}&category={category}&difficulty={difficulty}')
     response = TriviaResponse.from_json(r.json())
-    return response.results[0]
+    return response.results

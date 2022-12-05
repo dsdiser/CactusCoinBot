@@ -1,6 +1,8 @@
+import json
 import sqlite3
 import atexit
 from datetime import datetime
+from typing import List
 
 import config
 import signal
@@ -11,6 +13,7 @@ try:
     connection.execute('CREATE TABLE IF NOT EXISTS AMOUNTS (id integer PRIMARY KEY, coin integer, correct_answers integer, incorrect_answers integer)')
     connection.execute('CREATE TABLE IF NOT EXISTS TRANSACTIONS (id integer, coin integer, memo text, date date)')
     connection.execute('CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text, active integer)')
+    connection.execute('CREATE TABLE IF NOT EXISTS TRIVIA_CHANNELS (channel_id integer, message_id integer, correct_users text, incorrect_users text, UNIQUE (channel_id))')
 except sqlite3.Error as e:
     print(e)
 
@@ -228,3 +231,91 @@ def get_answer_rankings():
         return amounts
     return None
 
+
+"""
+TRIVIA
+"""
+
+
+def serialize_user_list(users: List[int]) -> str:
+    obj = {'users': users}
+    return json.dumps(obj)
+
+
+def deserialize_user_list(users: str) -> List[int]:
+    return json.loads(users)['users']
+
+
+def get_channels():
+    """
+    Gets all channels to send trivia question to
+    :return:
+    """
+    cur = connection.cursor()
+    channels = cur.execute('SELECT channel_id, message_id FROM TRIVIA_CHANNELS').fetchall()
+    if channels:
+        return channels
+    return None
+
+
+def get_correct_users(channel_id: int) -> List[int]:
+    """Gets all users with a correct answer for the channel"""
+    cur = connection.cursor()
+    users = cur.execute('SELECT correct_users FROM TRIVIA_CHANNELS WHERE channel_id = (?)', (channel_id,)).fetchone()
+    return deserialize_user_list(users[0])
+
+
+def get_incorrect_users(channel_id: int) -> List[int]:
+    """Gets all users with an incorrect answer for the channel"""
+    cur = connection.cursor()
+    users = cur.execute('SELECT incorrect_users FROM TRIVIA_CHANNELS WHERE channel_id = (?)', (channel_id,)).fetchone()
+    return deserialize_user_list(users[0])
+
+
+def add_channel(channel_id: int) -> None:
+    """Adds a channel to the list of channels enabled for trivia questions"""
+    cur = connection.cursor()
+    cur.execute('INSERT OR IGNORE INTO TRIVIA_CHANNELS(channel_id, message_id) VALUES (?, ?)',
+                (channel_id, 0))
+    connection.commit()
+
+
+def update_message_id(channel_id: int, message_id: int) -> None:
+    """Adds a new message for a specific channel and resets correct and incorrect users"""
+    cur = connection.cursor()
+    empty_user_list = serialize_user_list([])
+    cur.execute("UPDATE TRIVIA_CHANNELS "
+                "SET message_id = (?), correct_users = (?), incorrect_users = (?) "
+                "WHERE channel_id = (?)",
+                (message_id, empty_user_list, empty_user_list, channel_id))
+    connection.commit()
+
+
+def update_correct_users(channel_id: int, correct_users: List[int]) -> None:
+    """Updates the list of correct users for a channel"""
+    cur = connection.cursor()
+    users = serialize_user_list(correct_users)
+    cur.execute("UPDATE TRIVIA_CHANNELS "
+                "SET correct_users = (?) "
+                "WHERE channel_id = (?)",
+                (users, channel_id))
+    connection.commit()
+
+
+def update_incorrect_users(channel_id: int, incorrect_users: List[int]) -> None:
+    """Updates the list of incorrect users for a channel"""
+    cur = connection.cursor()
+    users = serialize_user_list(incorrect_users)
+    cur.execute("UPDATE TRIVIA_CHANNELS "
+                "SET correct_users = (?) "
+                "WHERE channel_id = (?)",
+                (users, channel_id))
+    connection.commit()
+
+
+def remove_channel(channel_id: int) -> None:
+    """Removes a channel from the list of channels enabled for trivia questions"""
+    cur = connection.cursor()
+    cur.execute("DELETE FROM TRIVIA_CHANNELS WHERE channel_id = (?)",
+                (channel_id,))
+    connection.commit()
