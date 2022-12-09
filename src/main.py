@@ -10,7 +10,7 @@ from discord.ext import commands
 import config
 from discord_cog import setup
 
-logging.basicConfig(stream=sys.stderr, level=config.getAttribute('logLevel', 'INFO'))
+logging.basicConfig(stream=sys.stderr, level=config.get_attribute('logLevel', 'INFO'))
 # This is needed to get full list of members
 intents = discord.Intents.default()
 intents.members = True
@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)
 
 
 async def main():
-    token = config.getAttribute('token', None)
+    token = config.get_attribute('token', None)
     if token:
         await setup(bot)
         await bot.start(token)

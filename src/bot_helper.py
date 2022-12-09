@@ -51,7 +51,7 @@ def is_dev(interaction: discord.Interaction):
 async def create_role(guild: discord.Guild, amount: int):
     """Creates a cactus coin role that denotes the amount of coin a member has."""
     # avoid duplicating roles whenever possible
-    prefix = config.getAttribute('rolePrefix', 'Cactus Coin: ')
+    prefix = config.get_attribute('rolePrefix', 'Cactus Coin: ')
     new_role_name = f'{prefix}{format(amount, ",d")}'
     existing_role = [role for role in guild.roles if role.name == new_role_name]
     if existing_role:
@@ -62,7 +62,7 @@ async def create_role(guild: discord.Guild, amount: int):
 
 async def remove_role(guild: discord.Guild, member: discord.Member):
     """ Removes the cactus coin role from the member's role and from the guild if necessary """
-    prefix = config.getAttribute('rolePrefix', 'Cactus Coin')
+    prefix = config.get_attribute('rolePrefix', 'Cactus Coin')
     cactus_roles = [role for role in member.roles if prefix in role.name]
     if cactus_roles:
         cactus_role = cactus_roles[0]
@@ -71,11 +71,11 @@ async def remove_role(guild: discord.Guild, member: discord.Member):
         await clear_old_roles(guild)
 
 
-async def verify_coin(guild: discord.Guild, member: discord.Member, amount: int = config.getAttribute('defaultCoin')):
+async def verify_coin(guild: discord.Guild, member: discord.Member, amount: int = config.get_attribute('defaultCoin')):
     """ Verifies the state of a user's role denoting their coin, creates it if it doesn't exist. """
     # update coin for member who has cactus coin in database
     db_amount = get_coin(member.id)
-    prefix = config.getAttribute('rolePrefix', 'Cactus Coin')
+    prefix = config.get_attribute('rolePrefix', 'Cactus Coin')
     if db_amount:
         amount = db_amount
         logging.debug(f'Found coin for {member.display_name}: {str(db_amount)}')
@@ -123,7 +123,7 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int, pe
     :return:
     """
     current_coin = get_coin(member.id)
-    new_coin = max(current_coin + amount, config.getAttribute('debtLimit'))
+    new_coin = max(current_coin + amount, config.get_attribute('debtLimit'))
     update_coin(member.id, new_coin)
     if persist:
         add_transaction(member.id, amount)

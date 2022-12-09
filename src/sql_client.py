@@ -2,18 +2,26 @@ import json
 import sqlite3
 import atexit
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import config
 import signal
 
 
 try:
-    connection = sqlite3.connect(config.getAttribute('dbFile'))
+    connection = sqlite3.connect(config.get_attribute('dbFile'))
     connection.execute('CREATE TABLE IF NOT EXISTS AMOUNTS (id integer PRIMARY KEY, coin integer, correct_answers integer, incorrect_answers integer)')
     connection.execute('CREATE TABLE IF NOT EXISTS TRANSACTIONS (id integer, coin integer, memo text, date date)')
-    connection.execute('CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text, active integer)')
-    connection.execute('CREATE TABLE IF NOT EXISTS TRIVIA_CHANNELS (channel_id integer, message_id integer, correct_users text, incorrect_users text, UNIQUE (channel_id))')
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text, active integer)'
+    )
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS TRIVIA_CHANNELS (channel_id integer, message_id integer, correct_users text, incorrect_users text, reward integer, UNIQUE (channel_id))'
+    )
+    # Config for trivia in each channel, has the question category and difficulty for the question
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS TRIVIA_CONFIG (channel_id integer, category text, difficulty text, UNIQUE (channel_id))'
+    )
 except sqlite3.Error as e:
     print(e)
 
@@ -252,7 +260,7 @@ def get_channels():
     :return:
     """
     cur = connection.cursor()
-    channels = cur.execute('SELECT channel_id, message_id FROM TRIVIA_CHANNELS').fetchall()
+    channels = cur.execute('SELECT channel_id, message_id, reward FROM TRIVIA_CHANNELS').fetchall()
     if channels:
         return channels
     return None
@@ -275,8 +283,8 @@ def get_incorrect_users(channel_id: int) -> List[int]:
 def add_channel(channel_id: int) -> None:
     """Adds a channel to the list of channels enabled for trivia questions"""
     cur = connection.cursor()
-    cur.execute('INSERT OR IGNORE INTO TRIVIA_CHANNELS(channel_id, message_id) VALUES (?, ?)',
-                (channel_id, 0))
+    cur.execute('INSERT OR IGNORE INTO TRIVIA_CHANNELS(channel_id, message_id, reward) VALUES (?, ?, ?)',
+                (channel_id, 0, 25))
     connection.commit()
 
 
@@ -288,6 +296,16 @@ def update_message_id(channel_id: int, message_id: int) -> None:
                 "SET message_id = (?), correct_users = (?), incorrect_users = (?) "
                 "WHERE channel_id = (?)",
                 (message_id, empty_user_list, empty_user_list, channel_id))
+    connection.commit()
+
+
+def update_reward(channel_id: int, reward: int) -> None:
+    """Adds a new message for a specific channel and resets correct and incorrect users"""
+    cur = connection.cursor()
+    cur.execute("UPDATE TRIVIA_CHANNELS "
+                "SET reward = (?) "
+                "WHERE channel_id = (?)",
+                (reward, channel_id))
     connection.commit()
 
 

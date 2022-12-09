@@ -1,5 +1,5 @@
 from html import unescape
-from typing import Literal, List
+from typing import Literal, List, Optional
 from dataclasses import dataclass
 from random import shuffle
 import requests
@@ -30,10 +30,13 @@ class Question:
         :return:
         """
         if self.type == 'boolean':
-            return ['True', 'False']
+            choices = self.incorrect_answers + [self.correct_answer]
+            # sort so that true is before false
+            choices.sort(reverse=True)
+            return choices
         else:
             choices = self.incorrect_answers + [self.correct_answer]
-            shuffle(choices)
+            choices.sort()
             return choices
 
     @staticmethod
@@ -45,6 +48,9 @@ class Question:
             correct_answer=html_decode(json_dict['correct_answer']),
             incorrect_answers=[html_decode(a) for a in json_dict['incorrect_answers']]
         )
+
+    def __hash__(self):
+        return hash((self.question, self.type))
 
 
 @dataclass
@@ -61,7 +67,7 @@ class TriviaResponse:
         )
 
 
-def get_trivia_questions(amount: str = '1', category: str = '15', difficulty: Difficulty = 'easy') -> List[Question]:
+def get_trivia_questions(amount: str = '1', category: Optional[str] = None, difficulty: Optional[Difficulty] = None) -> List[Question]:
     """
     Uses https://opentdb.com/api_config.php to fetch a trivia question and converts it to a question object we can use
     :param amount:
@@ -70,6 +76,11 @@ def get_trivia_questions(amount: str = '1', category: str = '15', difficulty: Di
     :return:
     """
     # TODO: enable the entering of custom trivia questions through an admin command
-    r = requests.get(f'https://opentdb.com/api.php?amount={amount}&category={category}&difficulty={difficulty}')
+    request_url = f'https://opentdb.com/api.php?amount={amount}'
+    if category:
+        request_url = request_url + f'&category={category}'
+    if difficulty:
+        request_url = request_url + f'&difficulty={difficulty}'
+    r = requests.get(request_url)
     response = TriviaResponse.from_json(r.json())
     return response.results

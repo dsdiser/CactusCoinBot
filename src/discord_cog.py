@@ -9,7 +9,7 @@ import bot_helper
 import config
 import sql_client
 import views
-from trivia_handler import Question, get_trivia_questions
+from trivia_handler import Question, get_trivia_questions, Difficulty
 from pytz import timezone
 
 TIME_PERIOD = Literal["week", "month", "year"]
@@ -39,6 +39,10 @@ adminCommands = {
     '/full-clear': '!DEV ONLY! Clears all users\'s coins and clears all roles',
     '/trivia-start': '!ADMIN ONLY! Enables the current channel for trivia questions',
     '/trivia-end': '!ADMIN ONLY! Disables the current channel for trivia questions',
+    '/trivia-populate': '!ADMIN ONLY! Repopulates the trivia bank',
+    '/trivia-reward': '!ADMIN ONLY! Updates the trivia reward for a successful answer, applies to the next question',
+    '/trivia-reset': '!ADMIN ONLY! Resets today\'s trivia question and sends a new one.',
+    '/trivia-submit': '!ADMIN ONLY! Provides input for submitting a custom question.',
 }
 
 est = timezone('US/Eastern')
@@ -118,9 +122,9 @@ class BotCog(commands.Cog):
     @discord.app_commands.guild_only()
     async def give(self, interaction: discord.Interaction, user: discord.Member, amount: int) -> None:
         author_coin = sql_client.get_coin(interaction.user.id)
-        if author_coin - amount < config.getAttribute('debtLimit'):
+        if author_coin - amount < config.get_attribute('debtLimit'):
             await interaction.response.send_message(
-                f'You don\'t have this much coin to give {config.getAttribute("sadEmote", "")}',
+                f'You don\'t have this much coin to give {config.get_attribute("sadEmote", "")}',
                 ephemeral=True
             )
         elif user.id == interaction.user.id:
@@ -143,13 +147,13 @@ class BotCog(commands.Cog):
     async def bet_start(self, interaction: discord.Interaction, user: discord.Member, amount: int, reason: str) -> None:
         author_coin = sql_client.get_coin(interaction.user.id)
         opponent_coin = sql_client.get_coin(user.id)
-        if author_coin - amount < config.getAttribute('debtLimit'):
+        if author_coin - amount < config.get_attribute('debtLimit'):
             await interaction.response.send_message(
-                f'You don\'t have this much coin to bet {config.getAttribute("sadEmote", "")}',
+                f'You don\'t have this much coin to bet {config.get_attribute("sadEmote", "")}',
                 ephemeral=True)
-        elif opponent_coin - amount < config.getAttribute('debtLimit'):
+        elif opponent_coin - amount < config.get_attribute('debtLimit'):
             await interaction.response.send_message(
-                f'{user.mention} doesn\'t have this much coin to bet {config.getAttribute("sadEmote", "")}',
+                f'{user.mention} doesn\'t have this much coin to bet {config.get_attribute("sadEmote", "")}',
                 ephemeral=True)
         elif user.id == interaction.user.id:
             await interaction.response.send_message('You can\'t bet against yourself silly', ephemeral=True)
@@ -402,9 +406,9 @@ class BotCog(commands.Cog):
     @discord.app_commands.guild_only()
     async def reset(self, interaction: discord.Interaction, user: discord.Member) -> None:
         amount = sql_client.get_coin(user.id)
-        await bot_helper.add_coin(interaction.guild, user, -(amount - config.getAttribute('defaultCoin')),
+        await bot_helper.add_coin(interaction.guild, user, -(amount - config.get_attribute('defaultCoin')),
                                   persist=False)
-        await bot_helper.update_role(interaction.guild, user, config.getAttribute('defaultCoin'))
+        await bot_helper.update_role(interaction.guild, user, config.get_attribute('defaultCoin'))
 
     @discord.app_commands.command(name="soft-reset", description=adminCommands["/soft-reset"])
     @discord.app_commands.check(bot_helper.is_admin)
@@ -414,11 +418,11 @@ class BotCog(commands.Cog):
         output = ''
         for member in interaction.guild.members:
             amount = sql_client.get_coin(member.id)
-            await bot_helper.add_coin(interaction.guild, member, -(amount - config.getAttribute('defaultCoin')),
+            await bot_helper.add_coin(interaction.guild, member, -(amount - config.get_attribute('defaultCoin')),
                                       persist=False)
-            await bot_helper.update_role(interaction.guild, member, config.getAttribute('defaultCoin'))
+            await bot_helper.update_role(interaction.guild, member, config.get_attribute('defaultCoin'))
         await interaction.response.send_message(
-            f'Everyone\'s coin reset back to {config.getAttribute("defaultCoin")}...here\'s the short history just in '
+            f'Everyone\'s coin reset back to {config.get_attribute("defaultCoin")}...here\'s the short history just in '
             f'case.\n{output}')
 
     @discord.app_commands.command(name="full-clear", description=adminCommands["/full-clear"])
@@ -456,60 +460,95 @@ trivia_time = datetime.time(hour=9, tzinfo=est)
 class TriviaCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.question_offset = 50
-        self.question_offset_str = str(self.question_offset)
+        self.question_amount = 50
         self.questions = []
-        self.populate_question_list()
         self.current_question: Optional[Question] = None
+        self.current_index: int = 0
+        self.trivia_category: Optional[str] = None
+        self.trivia_difficulty: Optional[Difficulty] = None
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
         print(f'Bot logged in and enabled for Trivia')
         print('------')
+        self.populate_question_list()
         self.trivia_loop.start()
 
     def cog_unload(self):
         self.trivia_loop.cancel()
 
-    def populate_question_list(self) -> None:
+    def populate_question_list(self) -> bool:
         """Repopulates the list of questions"""
-        self.questions = get_trivia_questions(self.question_offset_str)
+        questions = get_trivia_questions(str(self.question_amount), self.trivia_category, self.trivia_difficulty)
+        if questions:
+            self.questions = questions
+            return True
+        return False
 
-    def get_question(self, idx: int) -> Question:
+    def get_question(self, idx: int = 0) -> Question:
         """Gets a question from the question list and repopulates the list if we run out of questions"""
-        relative_idx = idx % self.question_offset
-        if relative_idx == 0 and idx >= self.question_offset:
+        # if we've run out of questions
+        if len(self.questions) == 0:
             self.populate_question_list()
-        return self.questions[relative_idx]
+        return self.questions.pop(idx)
 
-    @discord.app_commands.command(name="trivia-start", description=adminCommands["/trivia-start"])
+    @discord.app_commands.command(name='trivia-start', description=adminCommands['/trivia-start'])
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def trivia_start(self, interaction: discord.Interaction) -> None:
         sql_client.add_channel(interaction.channel_id)
         await interaction.response.send_message(f'{interaction.channel.name} enabled for trivia questions.')
 
-    @discord.app_commands.command(name="trivia-end", description=adminCommands["/trivia-end"])
+    @discord.app_commands.command(name='trivia-end', description=adminCommands['/trivia-end'])
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def trivia_end(self, interaction: discord.Interaction) -> None:
         sql_client.remove_channel(interaction.channel_id)
         await interaction.response.send_message(f'{interaction.channel.name} disabled for trivia questions.')
 
-    # TODO: Reset trivia questions list command
+    @discord.app_commands.command(name='trivia-populate', description=adminCommands['/trivia-populate'])
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_populate(self, interaction: discord.Interaction) -> None:
+        result = self.populate_question_list()
+        result_str = 'successful' if result else 'not successful'
+        await interaction.response.send_message(
+            f'The re-population of the trivia question base was {result_str}',
+            ephemeral=True
+        )
 
-    # TODO: Reset today's trivia question command
+    @discord.app_commands.command(name='trivia-reward', description=adminCommands['/trivia-reward'])
+    @discord.app_commands.describe(reward='How much to set the reward to')
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_reward(self, interaction: discord.Interaction, reward: int) -> None:
+        sql_client.update_reward(interaction.channel_id, reward)
+        await interaction.response.send_message(f'The trivia reward has been set to {reward}', ephemeral=True)
 
-    # TODO: Manually submitted trivia question command
+    @discord.app_commands.command(name='trivia-reset', description=adminCommands['/trivia-reset'])
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_reset(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(f'Resetting today\'s trivia question')
+        await self.trivia_loop()
 
-    # TODO:
+    @discord.app_commands.command(name='trivia-submit', description=adminCommands['/trivia-submit'])
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_submit(self, interaction: discord.Interaction) -> None:
+        question = views.QuestionSubmit()
+        await interaction.response.send_modal(question)
+        await question.wait()
+        self.questions.insert(0, question.submitted_question)
+    # TODO: Deal with duplicate questions
+    # Store hashes somewhere permanent and remove after
 
 
     # @tasks.loop(time=trivia_time)
-    @tasks.loop(minutes=15.0, count=2)
+    @tasks.loop(minutes=15.0)
     async def trivia_loop(self) -> None:
         channels = sql_client.get_channels()
-        for (channel_id, message_id) in channels:
+        for (channel_id, message_id, reward) in channels:
             channel = await self.bot.fetch_channel(channel_id)
             # Handle previous day's message
             if message_id:
@@ -524,11 +563,15 @@ class TriviaCog(commands.Cog):
                     # Provide the set of people who got the answer correct and incorrect
                     correct_users = sql_client.get_correct_users(channel_id)
                     incorrect_users = sql_client.get_incorrect_users(channel_id)
-                    embed = discord.Embed(title='Results', color=discord.Color.purple())
-                    correct_user_str = '\n'.join([f'<@{str(user_id)}>' for user_id in correct_users]) or '\u200b'
-                    incorrect_user_str = '\n'.join([f'<@{str(user_id)}>' for user_id in incorrect_users]) or '\u200b'
-                    embed.add_field(name='Correct', value=correct_user_str)
-                    embed.add_field(name='Incorrect', value=incorrect_user_str)
+                    if len(correct_users) or len(incorrect_users):
+                        embed = discord.Embed(title='Results', color=discord.Color.purple())
+                        correct_user_str = '\n'.join([f'<@{str(user_id)}>' for user_id in correct_users]) or '\u200b'
+                        incorrect_user_str = '\n'.join([f'<@{str(user_id)}>' for user_id in incorrect_users]) or '\u200b'
+                        embed.add_field(name='Correct', value=correct_user_str)
+                        embed.add_field(name='Incorrect', value=incorrect_user_str)
+                    else:
+                        embed = None
+                    # Bold and underline the correct answer
                     choices = [
                         f'__**{choice}**__' if choice == self.current_question.correct_answer
                         else choice
@@ -542,11 +585,20 @@ class TriviaCog(commands.Cog):
                     )
 
             # Send today's trivia question
-            self.current_question = self.get_question(self.trivia_loop.current_loop)
-            dropdown = views.DropdownView(self.current_question)
+            self.current_question = self.get_question()
+            dropdown = views.DropdownView(question=self.current_question, amount=reward)
             prompt = f'Today\'s daily trivia question!\n{self.current_question.question}'
             message = await channel.send(content=prompt, view=dropdown)
             sql_client.update_message_id(channel_id, message.id)
+
+    @trivia_start.error
+    @trivia_end.error
+    @trivia_populate.error
+    @trivia_reward.error
+    @trivia_reset.error
+    async def permissions_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, discord.app_commands.errors.CheckFailure):
+            await interaction.response.send_message('You do not have permissions to use that command.', ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
