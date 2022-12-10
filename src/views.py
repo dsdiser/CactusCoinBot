@@ -4,7 +4,7 @@ import bot_helper
 import config
 import sql_client
 from typing import Literal, Optional
-from trivia_handler import Question
+from trivia_handler import Question, QuestionType
 
 
 # Define a simple View that gives us a confirmation menu
@@ -39,7 +39,12 @@ class Dropdown(discord.ui.Select):
         self.amount = amount
         self.selectedOption = ''
         # Set the options that will be presented inside the dropdown
-        options = [discord.SelectOption(label=choice) for choice in question.get_choices()]
+        self.emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+
+        options = [
+            discord.SelectOption(label=choice, emoji=self.emojis[idx])
+            for idx, choice in enumerate(question.get_choices())
+        ]
 
         # The placeholder is what will be shown when no option is chosen
         # The min and max values indicate we can only pick one of the three options
@@ -124,7 +129,7 @@ class QuestionSubmit(discord.ui.Modal, title='Input your question'):
 
     async def on_submit(self, interaction: discord.Interaction):
         is_boolean = self.correct_answer.value.lower() == 'true' or self.answer_2.value.lower() == 'true'
-        question_type = Literal['boolean' if is_boolean else 'multiple']
+        question_type: QuestionType = 'boolean' if is_boolean else 'multiple'
         incorrect_answers = [answer for answer in [self.answer_2.value, self.answer_3.value, self.answer_4.value] if answer]
         q = Question(
             category='custom',

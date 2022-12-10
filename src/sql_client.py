@@ -18,9 +18,8 @@ try:
     connection.execute(
         'CREATE TABLE IF NOT EXISTS TRIVIA_CHANNELS (channel_id integer, message_id integer, correct_users text, incorrect_users text, reward integer, UNIQUE (channel_id))'
     )
-    # Config for trivia in each channel, has the question category and difficulty for the question
     connection.execute(
-        'CREATE TABLE IF NOT EXISTS TRIVIA_CONFIG (channel_id integer, category text, difficulty text, UNIQUE (channel_id))'
+        'CREATE TABLE IF NOT EXISTS TRIVIA_HASHES (hash integer, unique (hash))'
     )
 except sqlite3.Error as e:
     print(e)
@@ -336,4 +335,20 @@ def remove_channel(channel_id: int) -> None:
     cur = connection.cursor()
     cur.execute("DELETE FROM TRIVIA_CHANNELS WHERE channel_id = (?)",
                 (channel_id,))
+    connection.commit()
+
+
+def get_seen_questions():
+    """Gets all the currently seen questions"""
+    cur = connection.cursor()
+    hashes = cur.execute('SELECT * FROM TRIVIA_HASHES').fetchall()
+    if hashes:
+        return hashes
+    return None
+
+
+def add_seen_questions(hashes: List[tuple[int]]):
+    """Adds a list of new hashes to the table of hashes"""
+    cur = connection.cursor()
+    cur.executemany("INSERT OR IGNORE INTO TRIVIA_HASHES(hash) values (?)", hashes)
     connection.commit()

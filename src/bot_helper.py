@@ -4,12 +4,9 @@ import logging
 from io import BytesIO
 from PIL import Image, ImageDraw
 import os
-from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from datetime import datetime, date, timedelta
-from math import exp, cos, sin, radians
-import random
 from pytz import timezone
 
 from id_generator import random_id
@@ -216,9 +213,9 @@ async def get_icon(member: discord.Member):
         img.close()
 
 
-# Generic function for graphing a nice looking bar chart of values for each member
-# This function does not set plot title, axis titles, or close the plot
 async def graph_amounts(guild: discord.Guild, data):
+    """Generic function for graphing a nice looking bar chart of values for each member
+    This function does not set plot title, axis titles, or close the plot"""
     # pull all images of ranking members from Discord
     member_icons, member_names, member_amounts, member_color = [], [], [], []
 
@@ -267,8 +264,9 @@ async def graph_amounts(guild: discord.Guild, data):
         offset_image(value, i, icon, max_value=max_value, ax=ax)
 
 
-# Adds discord icons to bar chart
+
 def offset_image(x, y, icon, max_value, ax):
+    """Adds discord icons to bar chart"""
     img = plt.imread(icon)
     im = OffsetImage(img, zoom=0.65)
     im.image.axes = ax
@@ -281,109 +279,3 @@ def offset_image(x, y, icon, max_value, ax):
     ab = AnnotationBbox(im, (x, y), xybox=(x_offset, 0), frameon=False,
                         xycoords='data', boxcoords="offset points", pad=0)
     ax.add_artist(ab)
-
-
-# Returns the index of the winning member in members
-def get_winner(num_players, win_ang):
-    slice_degree = 360 / num_players
-    curr_degree = win_ang
-    for i in range(num_players):
-        if curr_degree < slice_degree:
-            return i
-        curr_degree -= slice_degree
-
-
-# Generate wheel for bet as a gif
-async def generate_wheel(members: List[discord.Member]):
-    canvas_size = 1000
-    wheel_offset = 5
-    bounding_box = ((wheel_offset, wheel_offset), (canvas_size - wheel_offset, canvas_size - wheel_offset))
-    slice_degree = 360 / len(members)
-    radius = (bounding_box[1][0] - bounding_box[0][0]) / 2
-    curr_slice = 0
-    wheel = Image.new('RGBA', (canvas_size, canvas_size), '#212946')
-    for member in members:
-        # Verify we have the member's icon stored
-        await get_icon(member)
-        wheel_draw = ImageDraw.Draw(wheel)
-        wheel_draw.pieslice(bounding_box, start=curr_slice, end=curr_slice + slice_degree, fill=member.color.to_rgb(),
-                            width=5, outline='white')
-        # Put each participant's icon on the image
-        if len(members) < 6:
-            member_icon = Image.open(f'../tmp/{member.display_avatar.key}.png')
-            offset = 128
-        else:
-            member_icon = Image.open(f'../tmp/{member.display_avatar.key}-44px.png')
-            offset = 44
-        member_icon = member_icon.convert('RGBA')
-        midAngle = curr_slice + slice_degree / 2
-
-        # grab coordinates to place icon at
-        coords = (round(bounding_box[0][1] + radius + 0.5 * radius * sin(radians(midAngle - 90))) - offset,
-                  round(bounding_box[0][0] + radius + 0.5 * radius * cos(radians(midAngle - 90))) - offset)
-        wheel.paste(member_icon.rotate(midAngle + 90), coords)
-        curr_slice += slice_degree
-
-    win_ang = random.randint(0, 360)
-
-    # generate time mesh for acceleration function to operate on
-    # set to be 7 "seconds" polled at .1 seconds found this gave enough
-    # points to make a smoother gif
-    time_mesh = [i / 10 for i in range(71)]
-
-    # starting set of rotations I found to look like someone is pulling a wheel back for
-    # a rather large spin. can be messed around with
-    start_animation = [0.0, -0.75, -1.5, -2.25, -3.0, -3.75, -4.5, -5.25]
-
-    # start actual spin at the last part of the pullback
-    # store all rotations of original image (in degrees) that create the gif
-    rotations = [start_animation[7]]
-    velocities = [0]
-
-    # e^2t for no real reason other than it makes the wheel get up to speed quick
-    acceleration_func = lambda t: exp(2 * t) if t <= 2.0 else 0
-
-    # now calculate distance traveled in degrees from the original image for each point in the
-    # time mesh using basic rotational dynamics
-    for i in range(1, len(time_mesh)):
-        t = time_mesh[i]
-        a = acceleration_func(t)
-        v = velocities[i - 1] + a * t
-        d = rotations[i - 1] + v * t
-
-        rotations.append(d)
-        velocities.append(v)
-
-    # Regardless of where we ended up, square up the last point with the original image so we can
-    # position the wheel where the winning slice always hits the top
-    win_ang_pos = rotations[len(rotations) - 1] + (360 - (rotations[len(rotations) - 1] % 360))
-    rotations.append(win_ang_pos)
-
-    # In order to hit the top of the circle, find the distance from the winning angle to 270(the top
-    # of the circle). The minus 180 here is used to get the more gentle stop from the end_animation
-    # array
-    rotations.append(
-        win_ang_pos + (270 - win_ang) - 180 if win_ang <= 270 else win_ang_pos + 360 - (win_ang - 270) - 180)
-    end_animation = [45, 45, 25, 20, 20, 10, 5, 2, 1, 1, 1]
-    curr = rotations[len(rotations) - 1]
-    for i in range(len(end_animation)):
-        curr += end_animation[i]
-        rotations.append(curr)
-
-    # Append the start animation to the front of the rotations array
-    rotations = start_animation + rotations
-
-    # Make the gif
-    outPath = '../tmp/wheel.gif'
-    wheel_imgs = []
-    triangle = (bounding_box[0][0] + radius - 30, 0), (bounding_box[0][0] + radius + 30, 0), (bounding_box[0][0] + radius, 50)
-    for i in range(len(rotations)):
-        currWheel = wheel.rotate(-rotations[i], expand=False, fillcolor='#212946')
-        draw = ImageDraw.Draw(currWheel)
-        draw.polygon(triangle, outline='#181A1B', fill='#181A1B')
-        wheel_imgs.append(currWheel)
-    draw = ImageDraw.Draw(wheel)
-    draw.polygon(triangle, outline='#181A1B', fill='#181A1B')
-    wheel.save(outPath, save_all=True, append_images=wheel_imgs)
-    winner = get_winner(len(members), win_ang)
-    return outPath, winner

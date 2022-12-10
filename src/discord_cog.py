@@ -3,7 +3,7 @@ import datetime
 import discord
 from discord import NotFound
 from discord.ext import commands, tasks
-from typing import Literal, List, Optional
+from typing import Literal, Optional
 
 import bot_helper
 import config
@@ -25,8 +25,6 @@ userCommands = {
     '/cancel-bet': 'Cancels an existing bet with another member.',
     '/list-bets': 'Lists all the active bets',
     '/my-bets': 'Lists all your active bets',
-    '/wheel': 'Usage: `/wheel [amount]`\n'
-              'Starts a wheel instance where each player buys in with the stated amount, winner takes all.',
 }
 
 adminCommands = {
@@ -453,8 +451,8 @@ class BotCog(commands.Cog):
             await interaction.response.send_message('You do not have permissions to use that command.', ephemeral=True)
 
 
-# Daily trivia at 9AM EST
-trivia_time = datetime.time(hour=9, tzinfo=est)
+# Daily trivia at 12AM EST
+trivia_time = datetime.time(hour=0, tzinfo=est)
 
 
 class TriviaCog(commands.Cog):
@@ -480,6 +478,14 @@ class TriviaCog(commands.Cog):
     def populate_question_list(self) -> bool:
         """Repopulates the list of questions"""
         questions = get_trivia_questions(str(self.question_amount), self.trivia_category, self.trivia_difficulty)
+        # ensures no duplicates are in the question list
+        question_hashes = [tuple((hash(question),)) for question in questions]
+        seen_hash_result = sql_client.get_seen_questions()
+        seen_hashes = []
+        if seen_hash_result:
+            seen_hashes = [q[0] for q in seen_hash_result]
+            sql_client.add_seen_questions(question_hashes)
+        questions = [question for idx, question in enumerate(questions) if question_hashes[idx][0] not in seen_hashes]
         if questions:
             self.questions = questions
             return True
@@ -540,12 +546,9 @@ class TriviaCog(commands.Cog):
         await interaction.response.send_modal(question)
         await question.wait()
         self.questions.insert(0, question.submitted_question)
-    # TODO: Deal with duplicate questions
-    # Store hashes somewhere permanent and remove after
 
-
-    # @tasks.loop(time=trivia_time)
-    @tasks.loop(minutes=15.0)
+    # @tasks.loop(minutes=15.0)
+    @tasks.loop(time=trivia_time)
     async def trivia_loop(self) -> None:
         channels = sql_client.get_channels()
         for (channel_id, message_id, reward) in channels:
@@ -596,6 +599,7 @@ class TriviaCog(commands.Cog):
     @trivia_populate.error
     @trivia_reward.error
     @trivia_reset.error
+    @trivia_submit.error
     async def permissions_error(self, interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.CheckFailure):
             await interaction.response.send_message('You do not have permissions to use that command.', ephemeral=True)
