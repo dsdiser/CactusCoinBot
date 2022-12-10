@@ -341,13 +341,6 @@ class BotCog(commands.Cog):
                     embed.add_field(name='\u200b', value='\u200b', inline=True)
             await interaction.response.send_message('', embed=embed, ephemeral=True)
 
-    @discord.app_commands.command(name="trivia", description="Testing trivia shit")
-    @discord.app_commands.guild_only()
-    async def trivia(self, interaction: discord.Interaction) -> None:
-        question = get_trivia_questions()[0]
-        dropdown = views.DropdownView(question)
-        await interaction.response.send_message(question.question, view=dropdown)
-
     '''
     ADMIN COMMANDS
     '''
