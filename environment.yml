@@ -2,12 +2,14 @@ name: CactusCoin
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.11
   - pip
   - pyyaml
   - pillow
   - matplotlib
   - opencv
   - pip:
-    - git+https://github.com/Rapptz/discord.py
+    - discord.py
     - pyspellchecker
+    - pytz
+    - requests

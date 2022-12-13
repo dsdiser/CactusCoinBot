@@ -2,5 +2,7 @@
 pyyaml
 pillow
 matplotlib
-git+https://github.com/Rapptz/discord.py
+discord.py
 pyspellchecker
+pytz
+requests
