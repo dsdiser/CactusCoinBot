@@ -7,7 +7,8 @@ User=pi
 Type=simple
 WorkingDirectory=/home/pi/CactusCoinBot/src/
 ExecStart=/usr/bin/python main.py
-Restart=on-abort
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
