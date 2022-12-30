@@ -525,11 +525,14 @@ class TriviaCog(commands.Cog):
         await interaction.response.send_message(f'The trivia reward has been set to {reward}', ephemeral=True)
 
     @discord.app_commands.command(name='trivia-reset', description=adminCommands['/trivia-reset'])
+    @discord.app_commands.describe(show_answer='Whether to show the answer for the previous day\'s question')
+    @discord.app_commands.describe(send_question='Whether to send another question to the channel')
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
-    async def trivia_reset(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(f'Resetting today\'s trivia question')
-        await self.trivia_loop()
+    async def trivia_reset(self, interaction: discord.Interaction, show_answer: bool = True, send_question: bool = True) -> None:
+        action = 'Resetting' if send_question else 'Clearing'
+        await interaction.response.send_message(f'{action} today\'s trivia question')
+        await self.trivia_loop(show_answer=show_answer, send_question=send_question)
 
     @discord.app_commands.command(name='trivia-submit', description=adminCommands['/trivia-submit'])
     @discord.app_commands.check(bot_helper.is_admin)
@@ -542,7 +545,7 @@ class TriviaCog(commands.Cog):
 
     # @tasks.loop(minutes=15.0)
     @tasks.loop(time=trivia_time)
-    async def trivia_loop(self) -> None:
+    async def trivia_loop(self, send_question: bool = True, show_answer: bool = True) -> None:
         channels = sql_client.get_channels()
         for (channel_id, message_id, reward) in channels:
             channel = await self.bot.fetch_channel(channel_id)
@@ -572,7 +575,7 @@ class TriviaCog(commands.Cog):
                         f'__**{choice}**__' if choice == self.current_question.correct_answer
                         else choice
                         for choice in self.current_question.get_choices()
-                    ]
+                    ] if show_answer else self.current_question.get_choices()
                     await message.edit(
                         content=f'> {self.current_question.question}\n'
                                 f'{", ".join(choices)}\n',
@@ -581,11 +584,14 @@ class TriviaCog(commands.Cog):
                     )
 
             # Send today's trivia question
-            self.current_question = self.get_question()
-            dropdown = views.DropdownView(question=self.current_question, amount=reward)
-            prompt = f'Today\'s daily trivia question!\n{self.current_question.question}'
-            message = await channel.send(content=prompt, view=dropdown)
-            sql_client.update_message_id(channel_id, message.id)
+            if send_question:
+                self.current_question = self.get_question()
+                dropdown = views.DropdownView(question=self.current_question, amount=reward)
+                prompt = f'Today\'s daily trivia question!\n{self.current_question.question}'
+                message = await channel.send(content=prompt, view=dropdown)
+                sql_client.update_message_id(channel_id, message.id)
+            else:
+                sql_client.update_message_id(channel_id, 0)
 
     @trivia_start.error
     @trivia_end.error
