@@ -204,12 +204,12 @@ async def get_icon(member: discord.Member):
     icon = member.display_avatar
     stored_icons = os.listdir('../tmp')
     if f'{icon.key}-44px.png' not in stored_icons:
-        img = Image.open(BytesIO(await icon.read()))
+        img = Image.open(BytesIO(await icon.read())).convert('RGB')
         img = img.resize((128, 128))
-        img.save(f'../tmp/{icon.key}.png')
+        img.save(f'../tmp/{icon.key}.png', 'PNG')
         img.putalpha(icon_mask)
         img = img.resize(icon_size)
-        img.save(f'../tmp/{icon.key}-44px.png')
+        img.save(f'../tmp/{icon.key}-44px.png', 'PNG')
         img.close()
 
 

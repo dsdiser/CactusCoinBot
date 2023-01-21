@@ -92,7 +92,7 @@ class Dropdown(discord.ui.Select):
 
 class DropdownView(discord.ui.View):
     def __init__(self, question: Question, disabled: bool = False, amount: int = 25):
-        super().__init__()
+        super().__init__(timeout=None)
         # Adds the dropdown to our view object.
         self.add_item(Dropdown(question=question, disabled=disabled, amount=amount))
 

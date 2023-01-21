@@ -110,9 +110,10 @@ class BotCog(commands.Cog):
     @discord.app_commands.command(name="rankings", description=userCommands["/rankings"])
     @discord.app_commands.guild_only()
     async def rankings(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=False, thinking=True)
         file_path = await bot_helper.compute_rankings(interaction.guild)
         file = discord.File(file_path)
-        await interaction.response.send_message('Here are the current power rankings:', file=file)
+        await interaction.followup.send('Here are the current power rankings:', file=file)
 
     @discord.app_commands.command(name="give", description=userCommands["/give"])
     @discord.app_commands.describe(user="The user to give Cactus Coin to")
