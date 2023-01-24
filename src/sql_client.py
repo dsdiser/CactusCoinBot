@@ -272,7 +272,7 @@ def get_correct_users(channel_id: int) -> List[int]:
     users = cur.execute('SELECT correct_users FROM TRIVIA_CHANNELS WHERE channel_id = (?)', (channel_id,)).fetchone()
     if users is None:
         return "[]"
-    return deserialize_user_list(users)
+    return deserialize_user_list(users[0])
 
 
 def get_incorrect_users(channel_id: int) -> List[int]:
@@ -281,7 +281,7 @@ def get_incorrect_users(channel_id: int) -> List[int]:
     users = cur.execute('SELECT incorrect_users FROM TRIVIA_CHANNELS WHERE channel_id = (?)', (channel_id,)).fetchone()
     if users is None:
         return "[]"
-    return deserialize_user_list(users)
+    return deserialize_user_list(users[0])
 
 
 def add_channel(channel_id: int) -> None:
