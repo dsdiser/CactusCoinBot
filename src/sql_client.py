@@ -250,7 +250,8 @@ def serialize_user_list(users: List[int]) -> str:
 
 
 def deserialize_user_list(users: str) -> List[int]:
-    return json.loads(users)['users']
+    users_json = json.loads(users)
+    return users_json['users'] if users_json['users'] else []
 
 
 def get_channels():
@@ -269,14 +270,18 @@ def get_correct_users(channel_id: int) -> List[int]:
     """Gets all users with a correct answer for the channel"""
     cur = connection.cursor()
     users = cur.execute('SELECT correct_users FROM TRIVIA_CHANNELS WHERE channel_id = (?)', (channel_id,)).fetchone()
-    return deserialize_user_list(users[0])
+    if users is None:
+        return []
+    return deserialize_user_list(users)
 
 
 def get_incorrect_users(channel_id: int) -> List[int]:
     """Gets all users with an incorrect answer for the channel"""
     cur = connection.cursor()
     users = cur.execute('SELECT incorrect_users FROM TRIVIA_CHANNELS WHERE channel_id = (?)', (channel_id,)).fetchone()
-    return deserialize_user_list(users[0])
+    if users is None:
+        return []
+    return deserialize_user_list(users)
 
 
 def add_channel(channel_id: int) -> None:
