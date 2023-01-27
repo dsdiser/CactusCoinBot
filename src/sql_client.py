@@ -329,7 +329,7 @@ def update_incorrect_users(channel_id: int, incorrect_users: List[int]) -> None:
     cur = connection.cursor()
     users = serialize_user_list(incorrect_users)
     cur.execute("UPDATE TRIVIA_CHANNELS "
-                "SET correct_users = (?) "
+                "SET incorrect_users = (?) "
                 "WHERE channel_id = (?)",
                 (users, channel_id))
     connection.commit()
