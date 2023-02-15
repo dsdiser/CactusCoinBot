@@ -189,7 +189,7 @@ class BotCog(commands.Cog):
                 bet_id = bot_helper.start_bet(interaction.user, user, amount, reason)
                 embed = discord.Embed(title='', color=discord.Color.dark_blue())
                 bet_entry = (bet_id, None, interaction.user.id, user.id, amount, reason, None)
-                add_bet_to_embed(embed, bet_entry, show_id=False)
+                add_bet_to_embed(embed, bet_entry, show_id=True)
                 await bot_helper.add_coin(interaction.guild, interaction.user, -amount)
                 await bot_helper.add_coin(interaction.guild, user, -amount)
                 await interaction.edit_original_response(
