@@ -9,6 +9,7 @@ import bot_helper
 import config
 import sql_client
 import views
+import openai
 from trivia_handler import Question, get_trivia_questions, Difficulty
 from pytz import timezone
 
@@ -25,6 +26,7 @@ userCommands = {
     '/cancel-bet': 'Cancels an existing bet with another member.',
     '/list-bets': 'Lists all the active bets',
     '/my-bets': 'Lists all your active bets',
+    '/imagine': 'Generates an image based off a prompt',
 }
 
 adminCommands = {
@@ -42,8 +44,6 @@ adminCommands = {
     '/trivia-reset': '!ADMIN ONLY! Resets today\'s trivia question and sends a new one.',
     '/trivia-submit': '!ADMIN ONLY! Provides input for submitting a custom question.',
 }
-
-est = timezone('US/Eastern')
 
 
 def add_bet_to_embed(embed: discord.Embed, bet, show_id=True):
@@ -114,6 +114,8 @@ class BotCog(commands.Cog):
         file_path = await bot_helper.compute_rankings(interaction.guild)
         file = discord.File(file_path)
         await interaction.followup.send('Here are the current power rankings:', file=file)
+        bot_helper.remove_file(file_path)
+
 
     @discord.app_commands.command(name="give", description=userCommands["/give"])
     @discord.app_commands.describe(user="The user to give Cactus Coin to")
@@ -342,6 +344,21 @@ class BotCog(commands.Cog):
                     embed.add_field(name='\u200b', value='\u200b', inline=True)
             await interaction.response.send_message('', embed=embed, ephemeral=True)
 
+    @discord.app_commands.command(name="imagine", description=userCommands["/imagine"])
+    @discord.app_commands.describe(prompt="The prompt for your image generation")
+    @discord.app_commands.guild_only()
+    async def imagine(self, interaction: discord.Interaction, prompt: str) -> None:
+        await interaction.response.defer(ephemeral=False, thinking=True)
+        try:
+            image_urls = bot_helper.generate_images(prompt=prompt, size="512x512")
+            formatted_image = bot_helper.fetch_and_format_images(image_urls)
+            file = discord.File(fp=formatted_image, filename='generated.png')
+            await interaction.followup.send(f'**{prompt}** - {interaction.user.mention}', file=file)
+        except openai.error.OpenAIError as e:
+            await interaction.followup.send(f'Request failed for prompt "{prompt}", here\'s some information to debug:\n'
+                                            f'Status Code: ``{e.http_status}``\n'
+                                            f'Error information: ``{e.error}``')
+
     '''
     ADMIN COMMANDS
     '''
@@ -446,7 +463,10 @@ class BotCog(commands.Cog):
 
 
 # Daily trivia at 12AM EST
-trivia_time = datetime.time(hour=0, tzinfo=est)
+est = timezone('US/Eastern')
+today = datetime.datetime.now(est).date()
+midnight = est.localize(datetime.datetime.combine(today, datetime.time(0, 0)), is_dst=None)
+trivia_time = midnight.time()
 
 
 class TriviaCog(commands.Cog):

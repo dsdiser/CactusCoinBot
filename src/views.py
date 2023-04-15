@@ -3,7 +3,7 @@ import discord
 import bot_helper
 import config
 import sql_client
-from typing import Literal, Optional
+from typing import Optional
 from trivia_handler import Question, QuestionType
 
 

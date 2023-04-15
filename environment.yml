@@ -13,3 +13,4 @@ dependencies:
     - pyspellchecker
     - pytz
     - requests
+    - openai

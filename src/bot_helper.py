@@ -1,6 +1,10 @@
+from typing import List
+
 import discord
 import config
 import logging
+import openai
+import requests
 from io import BytesIO
 from PIL import Image, ImageDraw
 import os
@@ -25,6 +29,9 @@ icon_size = (44, 44)
 icon_mask = Image.new('L', (128, 128))
 mask_draw = ImageDraw.Draw(icon_mask)
 mask_draw.ellipse((0, 0, 128, 128), fill=255)
+
+RANKINGS_FOLDER = '../tmp/rankings'
+AI_IMAGE_FOLDER = '../tmp/openai'
 
 
 def is_admin(interaction: discord.Interaction):
@@ -193,9 +200,22 @@ async def compute_rankings(guild: discord.Guild):
     today = today_date.strftime("%m-%d-%Y")
     plt.title('Cactus Gang Power Rankings\n' + today, fontweight='bold')
     plt.xlabel('Coin (¢)')
-    plt.savefig(f'../tmp/power-rankings-{today}.png', bbox_inches='tight', pad_inches=.5)
+    if not os.path.exists(RANKINGS_FOLDER):
+        os.makedirs(RANKINGS_FOLDER)
+    image_path = f'{RANKINGS_FOLDER}/power-rankings-{today}.png'
+    plt.savefig(image_path, bbox_inches='tight', pad_inches=.5)
     plt.close()
-    return f'../tmp/power-rankings-{today}.png'
+    return image_path
+
+
+def remove_file(file_path: str):
+    """
+    Removes a file if it exists
+    :param file_path:
+    :return:
+    """
+    if os.path.isfile(file_path):
+        os.remove(file_path)
 
 
 # Verify we have a member's icon
@@ -264,7 +284,6 @@ async def graph_amounts(guild: discord.Guild, data):
         offset_image(value, i, icon, max_value=max_value, ax=ax)
 
 
-
 def offset_image(x, y, icon, max_value, ax):
     """Adds discord icons to bar chart"""
     img = plt.imread(icon)
@@ -279,3 +298,38 @@ def offset_image(x, y, icon, max_value, ax):
     ab = AnnotationBbox(im, (x, y), xybox=(x_offset, 0), frameon=False,
                         xycoords='data', boxcoords="offset points", pad=0)
     ax.add_artist(ab)
+
+
+def generate_images(prompt: str, n: int = 4, size: str = "1024x1024") -> List[str]:
+    """
+    Generates an image using OpenAI's Dalle2
+    :param prompt: prompt for the image
+    :param n: number of images to generate
+    :param size: the size of the resulting generation
+    :return: A list of urls to link to
+    """
+    response = openai.Image.create(
+        prompt=prompt,
+        n=n,
+        size=size,
+    )
+    urls = [entry['url'] for entry in response['data']]
+    return urls
+
+
+def fetch_and_format_images(urls: List[str]) -> BytesIO:
+    """
+    Fetchs images from urls and formats them into a 4x4 grid
+    :param urls:
+    :return:
+    """
+    images = [Image.open(requests.get(url, headers={'Bearer': openai.api_key}, stream=True).raw) for url in urls]
+    formatted_image = Image.new('RGB', (images[0].width + images[1].width, images[2].height + images[3].height))
+    formatted_image.paste(images[0], (0, 0))
+    formatted_image.paste(images[1], (images[0].width, 0))
+    formatted_image.paste(images[2], (0, images[0].height))
+    formatted_image.paste(images[3], (images[2].width, images[1].height))
+    image_binary = BytesIO()
+    formatted_image.save(fp=image_binary, format='png')
+    image_binary.seek(0)
+    return image_binary

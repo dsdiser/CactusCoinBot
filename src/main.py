@@ -3,6 +3,7 @@ import atexit
 import logging
 import signal
 import sys
+import openai
 
 import discord
 from discord.ext import commands
@@ -19,12 +20,18 @@ bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)
 
 
 async def main():
+    openai_api_key = config.get_attribute('openai_key', None)
+    if openai_api_key:
+        openai.api_key = openai_api_key
+    else:
+        logging.error('No openai_key provided in config.yml, no openai functionality available.')
     token = config.get_attribute('token', None)
     if token:
         await setup(bot)
         await bot.start(token)
     else:
         logging.error('No token provided in config.yml, bot not started.')
+
 
 
 @atexit.register
