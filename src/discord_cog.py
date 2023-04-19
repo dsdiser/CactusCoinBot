@@ -467,7 +467,7 @@ class BotCog(commands.Cog):
 est = timezone('US/Eastern')
 today = datetime.datetime.now(est).date()
 midnight = est.localize(datetime.datetime.combine(today, datetime.time(0, 0)), is_dst=None)
-trivia_time_start = midnight.time()
+trivia_time_start = datetime.time(hour=0, tzinfo=est)
 
 
 class TriviaCog(commands.Cog):
@@ -571,7 +571,6 @@ class TriviaCog(commands.Cog):
         await question.wait()
         self.questions.insert(0, question.submitted_question)
 
-    # @tasks.loop(minutes=15.0)
     @tasks.loop(time=trivia_time_start)
     async def trivia_loop(self, send_question: bool = True, show_answer: bool = True) -> None:
         channels = sql_client.get_channels()
