@@ -512,6 +512,12 @@ class TriviaCog(commands.Cog):
             self.populate_question_list()
         return self.questions.pop(idx)
 
+    @discord.app_commands.command(name='trivia-time', description=adminCommands['/trivia-time'])
+    @discord.app_commands.check(bot_helper.is_admin)
+    @discord.app_commands.guild_only()
+    async def trivia_time(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(f'Trivia time is {trivia_time.strftime("%H:%M:%S")}.', ephemeral=True)
+
     @discord.app_commands.command(name='trivia-start', description=adminCommands['/trivia-start'])
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
