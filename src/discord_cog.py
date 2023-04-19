@@ -467,7 +467,7 @@ class BotCog(commands.Cog):
 est = timezone('US/Eastern')
 today = datetime.datetime.now(est).date()
 midnight = est.localize(datetime.datetime.combine(today, datetime.time(0, 0)), is_dst=None)
-trivia_time = midnight.time()
+trivia_time_start = midnight.time()
 
 
 class TriviaCog(commands.Cog):
@@ -517,7 +517,7 @@ class TriviaCog(commands.Cog):
     @discord.app_commands.check(bot_helper.is_admin)
     @discord.app_commands.guild_only()
     async def trivia_time(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(f'Trivia time is {trivia_time.strftime("%H:%M:%S")}.', ephemeral=True)
+        await interaction.response.send_message(f'Trivia time is {trivia_time_start.strftime("%H:%M:%S")}.', ephemeral=True)
 
     @discord.app_commands.command(name='trivia-start', description=adminCommands['/trivia-start'])
     @discord.app_commands.check(bot_helper.is_admin)
@@ -572,7 +572,7 @@ class TriviaCog(commands.Cog):
         self.questions.insert(0, question.submitted_question)
 
     # @tasks.loop(minutes=15.0)
-    @tasks.loop(time=trivia_time)
+    @tasks.loop(time=trivia_time_start)
     async def trivia_loop(self, send_question: bool = True, show_answer: bool = True) -> None:
         channels = sql_client.get_channels()
         for (channel_id, message_id, reward) in channels:
