@@ -43,6 +43,7 @@ adminCommands = {
     '/trivia-reward': '!ADMIN ONLY! Updates the trivia reward for a successful answer, applies to the next question',
     '/trivia-reset': '!ADMIN ONLY! Resets today\'s trivia question and sends a new one.',
     '/trivia-submit': '!ADMIN ONLY! Provides input for submitting a custom question.',
+    '/trivia-time': '!ADMIN ONLY! Outputs the scheduled time for trivia questions.',
 }
 
 
