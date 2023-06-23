@@ -75,7 +75,6 @@ def get_trivia_questions(amount: str = '1', category: Optional[str] = None, diff
     :param difficulty:
     :return:
     """
-    # TODO: enable the entering of custom trivia questions through an admin command
     request_url = f'https://opentdb.com/api.php?amount={amount}'
     if category:
         request_url = request_url + f'&category={category}'

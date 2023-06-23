@@ -491,7 +491,10 @@ class TriviaCog(commands.Cog):
         self.trivia_loop.cancel()
 
     def populate_question_list(self) -> bool:
-        """Repopulates the list of questions"""
+        """
+        Repopulates the list of questions
+        :returns boolean: False if we have no new questions, true otherwise
+        """
         questions = get_trivia_questions(str(self.question_amount), self.trivia_category, self.trivia_difficulty)
         # ensures no duplicates are in the question list
         question_hashes = [tuple((hash(question),)) for question in questions]
@@ -499,7 +502,6 @@ class TriviaCog(commands.Cog):
         seen_hashes = []
         if seen_hash_result:
             seen_hashes = [q[0] for q in seen_hash_result]
-            sql_client.add_seen_questions(question_hashes)
         questions = [question for idx, question in enumerate(questions) if question_hashes[idx][0] not in seen_hashes]
         if questions:
             self.questions = questions
@@ -511,7 +513,10 @@ class TriviaCog(commands.Cog):
         # if we've run out of questions
         if len(self.questions) == 0:
             self.populate_question_list()
-        return self.questions.pop(idx)
+        curr_question = self.questions.pop(idx)
+        # adds question to table of seen questions to avoid duplicates
+        sql_client.add_seen_question(hash(curr_question))
+        return curr_question
 
     @discord.app_commands.command(name='trivia-time', description=adminCommands['/trivia-time'])
     @discord.app_commands.check(bot_helper.is_admin)

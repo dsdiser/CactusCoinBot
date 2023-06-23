@@ -2,11 +2,13 @@ import json
 import sqlite3
 import atexit
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 import config
 import signal
 
+
+# TODO: This is messy, should really be using an ORM to manage these
 
 try:
     connection = sqlite3.connect(config.get_attribute('dbFile'))
@@ -352,8 +354,8 @@ def get_seen_questions():
     return None
 
 
-def add_seen_questions(hashes: List[tuple[int]]):
-    """Adds a list of new hashes to the table of hashes"""
+def add_seen_question(question_hash: int):
+    """Adds a seen hash to the table of hashes"""
     cur = connection.cursor()
-    cur.executemany("INSERT OR IGNORE INTO TRIVIA_HASHES(hash) values (?)", hashes)
+    cur.execute("INSERT OR IGNORE INTO TRIVIA_HASHES(hash) VALUES (?)", (question_hash,))
     connection.commit()
