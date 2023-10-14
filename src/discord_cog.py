@@ -351,7 +351,8 @@ class BotCog(commands.Cog):
     async def imagine(self, interaction: discord.Interaction, prompt: str) -> None:
         await interaction.response.defer(ephemeral=False, thinking=True)
         try:
-            image_urls = bot_helper.generate_images(prompt=prompt, size="512x512")
+            img_generator = config.get_attribute('img_generator', None)
+            image_urls = bot_helper.generate_images(prompt=prompt, size="512x512", generator=img_generator)
             formatted_image = bot_helper.fetch_and_format_images(image_urls)
             file = discord.File(fp=formatted_image, filename='generated.png')
             await interaction.followup.send(f'**{prompt}** - {interaction.user.mention}', file=file)
@@ -359,6 +360,9 @@ class BotCog(commands.Cog):
             await interaction.followup.send(f'Request failed for prompt "{prompt}", here\'s some information to debug:\n'
                                             f'Status Code: ``{e.http_status}``\n'
                                             f'Error information: ``{e.error}``')
+        except Exception as e:
+            await interaction.followup.send(f'Request failed for prompt "{prompt}", here\'s some information to debug:\n'
+                                            f'Error information: ``{e.__str__}``')
 
     '''
     ADMIN COMMANDS

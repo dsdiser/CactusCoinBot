@@ -5,3 +5,6 @@ defaultCoin: 1000
 debtLimit: -1000
 logLevel: INFO
 rolePrefix: Cactus Coin
+img_generator: replicate
+openai_key: YOUR_KEY_HERE
+replicate_key: YOUR_KEY_HERE

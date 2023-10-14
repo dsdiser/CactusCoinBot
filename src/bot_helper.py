@@ -4,6 +4,7 @@ import discord
 import config
 import logging
 import openai
+import replicate
 import requests
 from io import BytesIO
 from PIL import Image, ImageDraw
@@ -25,7 +26,7 @@ for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
 plt.rcParams['font.family'] = 'Tahoma'
 plt.rcParams['font.size'] = 16
 
-icon_size = (44, 44)
+ICON_SIZE = (44, 44)
 icon_mask = Image.new('L', (128, 128))
 mask_draw = ImageDraw.Draw(icon_mask)
 mask_draw.ellipse((0, 0, 128, 128), fill=255)
@@ -228,7 +229,7 @@ async def get_icon(member: discord.Member):
         img = img.resize((128, 128))
         img.save(f'../tmp/{icon.key}.png', 'PNG')
         img.putalpha(icon_mask)
-        img = img.resize(icon_size)
+        img = img.resize(ICON_SIZE)
         img.save(f'../tmp/{icon.key}-44px.png', 'PNG')
         img.close()
 
@@ -300,7 +301,7 @@ def offset_image(x, y, icon, max_value, ax):
     ax.add_artist(ab)
 
 
-def generate_images(prompt: str, n: int = 4, size: str = "1024x1024") -> List[str]:
+def generate_images(prompt: str, n: int = 4, size: str = "1024x1024", generator: str = 'replicate') -> List[str]:
     """
     Generates an image using OpenAI's Dalle2
     :param prompt: prompt for the image
@@ -308,12 +309,20 @@ def generate_images(prompt: str, n: int = 4, size: str = "1024x1024") -> List[st
     :param size: the size of the resulting generation
     :return: A list of urls to link to
     """
-    response = openai.Image.create(
-        prompt=prompt,
-        n=n,
-        size=size,
-    )
-    urls = [entry['url'] for entry in response['data']]
+    if generator == 'openai':
+        response = openai.Image.create(
+            prompt=prompt,
+            n=n,
+            size=size,
+        )
+        urls = [entry['url'] for entry in response['data']]
+    elif generator == 'replicate':
+        side = size.split('x')[0]
+        output = replicate.run(
+            "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316",
+            input={"prompt": prompt, "width": side, "height": side, "num_outputs": n}
+        )
+        urls = list(output)
     return urls
 
 
