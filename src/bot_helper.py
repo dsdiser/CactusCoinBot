@@ -317,7 +317,7 @@ def generate_images(prompt: str, n: int = 4, size: str = "1024x1024", generator:
         )
         urls = [entry['url'] for entry in response['data']]
     elif generator == 'replicate':
-        side = size.split('x')[0]
+        side = int(size.split('x')[0])
         output = replicate.run(
             "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316",
             input={"prompt": prompt, "width": side, "height": side, "num_outputs": n}
