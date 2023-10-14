@@ -362,7 +362,7 @@ class BotCog(commands.Cog):
                                             f'Error information: ``{e.error}``')
         except Exception as e:
             await interaction.followup.send(f'Request failed for prompt "{prompt}", here\'s some information to debug:\n'
-                                            f'Error information: ``{e.__str__}``')
+                                            f'Error information: ``{e}``')
 
     '''
     ADMIN COMMANDS
