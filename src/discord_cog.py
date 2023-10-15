@@ -353,7 +353,7 @@ class BotCog(commands.Cog):
         try:
             img_generator = config.get_attribute('img_generator', None)
             image_urls = bot_helper.generate_images(prompt=prompt, size="512x512", generator=img_generator)
-            formatted_image = bot_helper.fetch_and_format_images(image_urls)
+            formatted_image = bot_helper.fetch_and_format_images(image_urls, generator=img_generator)
             file = discord.File(fp=formatted_image, filename='generated.png')
             await interaction.followup.send(f'**{prompt}** - {interaction.user.mention}', file=file)
         except openai.error.OpenAIError as e:

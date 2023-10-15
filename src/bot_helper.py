@@ -326,13 +326,17 @@ def generate_images(prompt: str, n: int = 4, size: str = "1024x1024", generator:
     return urls
 
 
-def fetch_and_format_images(urls: List[str]) -> BytesIO:
+def fetch_and_format_images(urls: List[str], generator: str = 'replicate') -> BytesIO:
     """
     Fetchs images from urls and formats them into a 4x4 grid
     :param urls:
     :return:
     """
-    images = [Image.open(requests.get(url, headers={'Bearer': openai.api_key}, stream=True).raw) for url in urls]
+    if generator == 'openai':
+        images = [Image.open(requests.get(url, headers={'Bearer': openai.api_key}, stream=True).raw) for url in urls]
+    elif generator == 'replicate':
+        images = [Image.open(requests.get(url).raw) for url in urls]
+        assert len(images) == len(urls)
     formatted_image = Image.new('RGB', (images[0].width + images[1].width, images[2].height + images[3].height))
     formatted_image.paste(images[0], (0, 0))
     formatted_image.paste(images[1], (images[0].width, 0))
