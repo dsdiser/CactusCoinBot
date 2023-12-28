@@ -301,48 +301,31 @@ def offset_image(x, y, icon, max_value, ax):
     ax.add_artist(ab)
 
 
-def generate_images(prompt: str, n: int = 4, size: str = "1024x1024", generator: str = 'replicate') -> List[str]:
+def generate_image(prompt: str, size: str = "1024x1024") -> str:
     """
     Generates an image using OpenAI's Dalle2
     :param prompt: prompt for the image
-    :param n: number of images to generate
     :param size: the size of the resulting generation
-    :return: A list of urls to link to
+    :return: A url to link to
     """
-    if generator == 'openai':
-        response = openai.Image.create(
-            prompt=prompt,
-            n=n,
-            size=size,
-        )
-        urls = [entry['url'] for entry in response['data']]
-    elif generator == 'replicate':
-        side = int(size.split('x')[0])
-        output = replicate.run(
-            "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316",
-            input={"prompt": prompt, "width": side, "height": side, "num_outputs": n}
-        )
-        urls = list(output)
-    return urls
+    response = openai.Image.create(
+        model="dall-e-3",
+        prompt=prompt,
+        quality="standard",
+        n=1,
+        size=size,
+    )
+    return response.data[0].url
 
 
-def fetch_and_format_images(urls: List[str], generator: str = 'replicate') -> BytesIO:
+def fetch_and_format_image(url: str) -> BytesIO:
     """
-    Fetchs images from urls and formats them into a 4x4 grid
+    Fetchs image from url and puts file into memory
     :param urls:
     :return:
     """
-    if generator == 'openai':
-        images = [Image.open(requests.get(url, headers={'Bearer': openai.api_key}, stream=True).raw) for url in urls]
-    elif generator == 'replicate':
-        images = [Image.open(requests.get(url).raw) for url in urls]
-        assert len(images) == len(urls)
-    formatted_image = Image.new('RGB', (images[0].width + images[1].width, images[2].height + images[3].height))
-    formatted_image.paste(images[0], (0, 0))
-    formatted_image.paste(images[1], (images[0].width, 0))
-    formatted_image.paste(images[2], (0, images[0].height))
-    formatted_image.paste(images[3], (images[2].width, images[1].height))
+    image = Image.open(requests.get(url, headers={'Bearer': openai.api_key}, stream=True, timeout=30).raw)
     image_binary = BytesIO()
-    formatted_image.save(fp=image_binary, format='png')
+    image.save(fp=image_binary, format='png')
     image_binary.seek(0)
     return image_binary
