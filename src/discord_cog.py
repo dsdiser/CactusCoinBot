@@ -413,6 +413,7 @@ class BotCog(commands.Cog):
 
     @discord.app_commands.command(name="imagine", description=userCommands["/imagine"])
     @discord.app_commands.describe(prompt="The prompt for your image generation")
+    @discord.app_commands.check(bot_helper.is_ai_enabled)
     @discord.app_commands.guild_only()
     async def imagine(self, interaction: discord.Interaction, prompt: str) -> None:
         await interaction.response.defer(ephemeral=False, thinking=True)
@@ -577,6 +578,7 @@ class BotCog(commands.Cog):
     @reset.error
     @soft_reset.error
     @full_clear.error
+    @imagine.error
     async def permissions_error(self, interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.CheckFailure):
             await interaction.response.send_message(

@@ -1,10 +1,7 @@
-from typing import List
-
 import discord
 import config
 import logging
 import openai
-import replicate
 import requests
 from io import BytesIO
 from PIL import Image, ImageDraw
@@ -35,22 +32,24 @@ RANKINGS_FOLDER = '../tmp/rankings'
 AI_IMAGE_FOLDER = '../tmp/openai'
 
 
-def is_admin(interaction: discord.Interaction):
+def is_admin(interaction: discord.Interaction) -> bool:
     """Checks admin status for a member for specific admin only functionality."""
     member = interaction.user
-    roleNames = [role.name for role in member.roles if
+    role_names = [role.name for role in member.roles if
                  'CactusCoinDev' in role.name or 'President' in role.name or 'Vice President' in role.name]
-    if roleNames:
-        return True
-    return False
+    return bool(role_names)
 
 
-def is_dev(interaction: discord.Interaction):
+def is_ai_enabled(interaction: discord.Interaction) -> bool:
+    member = interaction.user
+    role_names = [role.name for role in member.roles if 'AI Gamer' in role.name]
+    return bool(role_names)
+
+
+def is_dev(interaction: discord.Interaction) -> bool:
     member = interaction.user
     role_names = [role.name for role in member.roles if 'CactusCoinDev' in role.name]
-    if role_names:
-        return True
-    return False
+    return bool(role_names)
 
 
 async def create_role(guild: discord.Guild, amount: int):
@@ -88,8 +87,8 @@ async def verify_coin(guild: discord.Guild, member: discord.Member, amount: int 
         logging.debug(f'No coin found for {member.display_name}, defaulting to: {str(amount)}')
         update_coin(member.id, amount)
 
-    roleNames = [role.name for role in member.roles if prefix in role.name]
-    if not roleNames:
+    role_names = [role.name for role in member.roles if prefix in role.name]
+    if not role_names:
         role = await create_role(guild, amount)
         await member.add_roles(role, reason=f'Cactus Coin: Role updated for {member.name} to {str(amount)}')
 

@@ -14,4 +14,3 @@ dependencies:
     - pytz
     - requests
     - openai
-    - replicate
