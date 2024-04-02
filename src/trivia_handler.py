@@ -1,7 +1,6 @@
 from html import unescape
 from typing import Literal, List, Optional
 from dataclasses import dataclass
-from random import shuffle
 import requests
 
 Difficulty = Literal['easy', 'medium', 'hard']

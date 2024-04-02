@@ -109,22 +109,6 @@ def get_coin_rankings():
     return None
 
 
-def get_transactions(time: datetime):
-    """
-    Get all transactions between now and the given date, ordered from greatest to least.
-    :param time:
-    :return:
-    """
-    cur = connection.cursor()
-    transactions = cur.execute(
-        "SELECT id, coin FROM TRANSACTIONS WHERE date BETWEEN ? AND ? ORDER BY coin",
-        (time, datetime.utcnow())
-    ).fetchall()
-    if transactions:
-        return transactions
-    return None
-
-
 def update_correct_answer_count(user_id: int):
     """
     Adds one to the user's correct answer count if it exists, starts one otherwise

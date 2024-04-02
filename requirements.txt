@@ -6,5 +6,3 @@ discord.py
 pyspellchecker
 pytz
 requests
-openai
-replicate

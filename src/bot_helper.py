@@ -1,18 +1,16 @@
-import discord
-import config
+from datetime import datetime
 import logging
-import openai
-import requests
 from io import BytesIO
-from PIL import Image, ImageDraw
 import os
+
+import discord
+from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from datetime import datetime, date, timedelta
 from pytz import timezone
 
-from id_generator import random_id
-from sql_client import get_coin, add_transaction, add_bet, get_coin_rankings, get_transactions, update_coin, fetch_bet
+import config
+from sql_client import get_coin, add_transaction, get_coin_rankings, update_coin
 
 # Matplotlib styling
 plt.style.use('dark_background')
@@ -29,27 +27,6 @@ mask_draw = ImageDraw.Draw(icon_mask)
 mask_draw.ellipse((0, 0, 128, 128), fill=255)
 
 RANKINGS_FOLDER = '../tmp/rankings'
-AI_IMAGE_FOLDER = '../tmp/openai'
-
-
-def is_admin(interaction: discord.Interaction) -> bool:
-    """Checks admin status for a member for specific admin only functionality."""
-    member = interaction.user
-    role_names = [role.name for role in member.roles if
-                 'CactusCoinDev' in role.name or 'President' in role.name or 'Vice President' in role.name]
-    return bool(role_names)
-
-
-def is_ai_enabled(interaction: discord.Interaction) -> bool:
-    member = interaction.user
-    role_names = [role.name for role in member.roles if 'AI Gamer' in role.name]
-    return bool(role_names)
-
-
-def is_dev(interaction: discord.Interaction) -> bool:
-    member = interaction.user
-    role_names = [role.name for role in member.roles if 'CactusCoinDev' in role.name]
-    return bool(role_names)
 
 
 async def create_role(guild: discord.Guild, amount: int):
@@ -132,64 +109,6 @@ async def add_coin(guild: discord.Guild, member: discord.Member, amount: int, pe
     if persist:
         add_transaction(member.id, amount)
     await update_role(guild, member, new_coin)
-
-
-def start_bet(bet_author: discord.Member, bet_opponent: discord.Member, amount: int, reason: str) -> str:
-    """
-    Starts a bet instance
-    :param bet_author:
-    :param bet_opponent:
-    :param amount:
-    :param reason:
-    :return:
-    """
-    # generate id
-    bet_id = random_id()
-    while fetch_bet(bet_id):
-        bet_id = random_id()
-    add_bet(bet_id=bet_id, author_id=bet_author.id, opponent_id=bet_opponent.id, amount=amount, reason=reason)
-    return bet_id
-
-
-async def get_movements(guild: discord.Guild, time_period: str, is_wins: bool):
-    """
-    Gets outlier movements either positive or negative and outputs a chart of them
-    :param guild:
-    :param time_period:
-    :param is_wins:
-    :return:
-    """
-    # TODO: FIX TIME PERIODS, GET START OF TIME THEN CONVERT TO UTC
-    start_period = ''
-    if time_period == 'week':
-        start_period = datetime.now() - timedelta(days=datetime.now().weekday())
-    elif time_period == 'month':
-        start_period = datetime.today().replace(day=1)
-    elif time_period == 'year':
-        start_period = date(date.today().year, 1, 1)
-
-    transactions = get_transactions(start_period)
-    if not transactions:
-        return None
-    if is_wins:
-        transactions = [i for i in transactions if i[1] > 0]
-    else:
-        transactions = [i for i in transactions if i[1] < 0]
-    numb_trans = min(len(transactions), 5)
-    transactions = transactions[:numb_trans] if is_wins else transactions[-numb_trans:]
-
-    await graph_amounts(guild, transactions)
-    plt.xlabel('Coin (¢)')
-
-    if is_wins:
-        plt.title('Greatest Wins From the Past ' + time_period.capitalize(), fontweight='bold')
-        filename = f'../tmp/wins-{time_period}.png'
-    else:
-        plt.title('Greatest Losses From the Past ' + time_period.capitalize(), fontweight='bold')
-        filename = f'../tmp/losses-{time_period}.png'
-    plt.savefig(filename, bbox_inches='tight', pad_inches=.5)
-    plt.close()
-    return filename
 
 
 # Computes power rankings for the server and outputs them in a bar graph in an image

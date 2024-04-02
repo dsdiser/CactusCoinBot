@@ -3,8 +3,6 @@ import atexit
 import logging
 import signal
 import sys
-import openai
-import os
 
 import discord
 from discord.ext import commands
@@ -36,7 +34,7 @@ def handle_exit():
     asyncio.run(bot.close())
 
 
-def invoke_exit(signo, frame):
+def invoke_exit(_signo, _frame):
     sys.exit(0)
 
 
