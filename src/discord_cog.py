@@ -411,31 +411,6 @@ class BotCog(commands.Cog):
                     embed.add_field(name="\u200b", value="\u200b", inline=True)
             await interaction.response.send_message("", embed=embed, ephemeral=True)
 
-    @discord.app_commands.command(name="imagine", description=userCommands["/imagine"])
-    @discord.app_commands.describe(prompt="The prompt for your image generation")
-    @discord.app_commands.check(bot_helper.is_ai_enabled)
-    @discord.app_commands.guild_only()
-    async def imagine(self, interaction: discord.Interaction, prompt: str) -> None:
-        await interaction.response.defer(ephemeral=False, thinking=True)
-        try:
-            image_url = bot_helper.generate_image(prompt=prompt, size="1024x1024")
-            formatted_image = bot_helper.fetch_and_format_image(image_url)
-            file = discord.File(fp=formatted_image, filename="generated.png")
-            await interaction.followup.send(
-                f"**{prompt}** - {interaction.user.mention}", file=file
-            )
-        except openai.error.OpenAIError as e:
-            await interaction.followup.send(
-                f'Request failed for prompt "{prompt}", here\'s some information to debug:\n'
-                f"Status Code: ``{e.http_status}``\n"
-                f"Error information: ``{e.error}``"
-            )
-        except Exception as e:
-            await interaction.followup.send(
-                f'Request failed for prompt "{prompt}", here\'s some information to debug:\n'
-                f"Error information: ``{e}``"
-            )
-
     """
     ADMIN COMMANDS
     """

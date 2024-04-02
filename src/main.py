@@ -21,17 +21,6 @@ bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)
 
 
 async def main():
-    img_generator = config.get_attribute('img_generator', None)
-    if img_generator == 'openai':
-        openai_api_key = config.get_attribute('openai_key', None)
-        if openai_api_key:
-            openai.api_key = openai_api_key
-        else:
-            logging.error('No openai_key provided in config.yml, no openai functionality available.')
-    elif img_generator == 'replicate':
-        replicate_api_key = config.get_attribute('replicate_key', None)
-        if replicate_api_key:
-            os.environ['REPLICATE_API_TOKEN'] = replicate_api_key
     token = config.get_attribute('token', None)
     if token:
         await setup(bot)

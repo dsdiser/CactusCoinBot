@@ -298,33 +298,3 @@ def offset_image(x, y, icon, max_value, ax):
     ab = AnnotationBbox(im, (x, y), xybox=(x_offset, 0), frameon=False,
                         xycoords='data', boxcoords="offset points", pad=0)
     ax.add_artist(ab)
-
-
-def generate_image(prompt: str, size: str = "1024x1024") -> str:
-    """
-    Generates an image using OpenAI's Dalle2
-    :param prompt: prompt for the image
-    :param size: the size of the resulting generation
-    :return: A url to link to
-    """
-    response = openai.Image.create(
-        model="dall-e-3",
-        prompt=prompt,
-        quality="standard",
-        n=1,
-        size=size,
-    )
-    return response.data[0].url
-
-
-def fetch_and_format_image(url: str) -> BytesIO:
-    """
-    Fetchs image from url and puts file into memory
-    :param urls:
-    :return:
-    """
-    image = Image.open(requests.get(url, headers={'Bearer': openai.api_key}, stream=True, timeout=30).raw)
-    image_binary = BytesIO()
-    image.save(fp=image_binary, format='png')
-    image_binary.seek(0)
-    return image_binary
