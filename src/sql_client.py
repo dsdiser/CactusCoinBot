@@ -15,9 +15,6 @@ try:
     connection.execute('CREATE TABLE IF NOT EXISTS AMOUNTS (id integer PRIMARY KEY, coin integer, correct_answers integer, incorrect_answers integer)')
     connection.execute('CREATE TABLE IF NOT EXISTS TRANSACTIONS (id integer, coin integer, memo text, date date)')
     connection.execute(
-        'CREATE TABLE IF NOT EXISTS BETS (id varchar(4), date date, author integer, opponent integer, amount integer, reason text, active integer)'
-    )
-    connection.execute(
         'CREATE TABLE IF NOT EXISTS TRIVIA_CHANNELS (channel_id integer, message_id integer, correct_users text, incorrect_users text, reward integer, UNIQUE (channel_id))'
     )
     connection.execute(
@@ -100,44 +97,6 @@ def remove_transactions(member_id: int):
     connection.commit()
 
 
-def add_bet(bet_id: str, author_id: int, opponent_id: int, amount: int, reason: str):
-    """
-    Adds a bet entry for two members
-    :param bet_id:
-    :param author_id:
-    :param opponent_id:
-    :param amount:
-    :param reason:
-    :return:
-    """
-    cur = connection.cursor()
-    cur.execute("INSERT INTO BETS(id, date, author, opponent, amount, reason, active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (bet_id, datetime.utcnow(), author_id, opponent_id, amount, reason, True))
-    connection.commit()
-
-
-def fetch_bet(bet_id: str):
-    """
-    Fetches bet entry from id
-    :param bet_id:
-    :return:
-    """
-    cur = connection.cursor()
-    bet = cur.execute("SELECT * FROM BETS WHERE id is (?)", (bet_id,)).fetchone()
-    return bet
-
-
-def remove_bet(bet_id: str):
-    """
-    Removes a bet entry
-    :param bet_id:
-    :return:
-    """
-    cur = connection.cursor()
-    cur.execute("UPDATE BETS SET active = 0 WHERE id is (?)", (bet_id,))
-    connection.commit()
-
-
 def get_coin_rankings():
     """
     Gets rankings of coin amounts
@@ -163,33 +122,6 @@ def get_transactions(time: datetime):
     ).fetchall()
     if transactions:
         return transactions
-    return None
-
-
-def get_active_bets():
-    """
-    Get all active bets
-    :return:
-    """
-    cur = connection.cursor()
-    bets = cur.execute("SELECT * FROM BETS WHERE active = 1 ORDER BY date").fetchall()
-    if bets:
-        return bets
-    return None
-
-
-def get_user_bets(user_id: int):
-    """
-    Get all active bets for a specific user
-    :return:
-    """
-    cur = connection.cursor()
-    bets = cur.execute(
-        "SELECT * FROM BETS WHERE active = 1 AND (opponent = (?) OR author = (?)) ORDER BY date",
-        (user_id, user_id)
-    ).fetchall()
-    if bets:
-        return bets
     return None
 
 

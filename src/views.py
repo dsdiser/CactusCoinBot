@@ -7,31 +7,6 @@ from typing import Optional
 from trivia_handler import Question, QuestionType
 
 
-# Define a simple View that gives us a confirmation menu
-class ConfirmBet(discord.ui.View):
-    def __init__(self, memberid: int):
-        # 10 second timeout
-        super().__init__(timeout=600.0)
-        self.value = None
-        self.member_id = memberid
-
-    @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id == self.member_id:
-            self.value = False
-            self.stop()
-        else:
-            await interaction.response.send_message('This is not your decision to make.', ephemeral=True)
-
-    @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id == self.member_id:
-            self.value = True
-            self.stop()
-        else:
-            await interaction.response.send_message('This is not your decision to make.', ephemeral=True)
-
-
 class Dropdown(discord.ui.Select):
     def __init__(self, question: Question, disabled: bool, amount: int):
         self.interacted_users = []
