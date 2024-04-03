@@ -76,8 +76,8 @@ async def clear_old_roles(guild: discord.Guild):
     :param guild:
     :return:
     """
-    emptyRoles = [role for role in guild.roles if 'Cactus Coin:' in role.name and len(role.members) == 0]
-    for role in emptyRoles:
+    empty_roles = [role for role in guild.roles if 'Cactus Coin:' in role.name and len(role.members) == 0]
+    for role in empty_roles:
         await role.delete(reason='Cactus Coin: Removing unused role.')
 
 
