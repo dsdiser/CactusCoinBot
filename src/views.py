@@ -1,10 +1,10 @@
+from typing import Optional
 import discord
 
-import bot_helper
-import config
-import sql_client
-from typing import Optional
-from trivia_handler import Question, QuestionType
+from . import bot_helper
+from . import config
+from . import sql_client
+from .trivia_handler import Question, QuestionType
 
 
 class Dropdown(discord.ui.Select):

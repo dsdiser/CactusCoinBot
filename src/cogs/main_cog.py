@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands
 
-import bot_helper
-import config
-import permissions
-import sql_client
+from .. import bot_helper
+from .. import config
+from .. import permissions
+from .. import sql_client
 
 userCommands = {
     "/help": "Outputs a list of commands.",
@@ -266,8 +266,3 @@ class BotCog(commands.Cog):
             await interaction.response.send_message(
                 "You do not have permissions to use that command.", ephemeral=True
             )
-
-
-async def setup(bot: commands.Bot):
-    await bot.add_cog(BotCog(bot))
-    # await bot.add_cog(TriviaCog(bot))

@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pytz import timezone
 
-import config
-from sql_client import get_coin, add_transaction, get_coin_rankings, update_coin
+from . import config
+from .sql_client import get_coin, add_transaction, get_coin_rankings, update_coin
 
 # Matplotlib styling
 plt.style.use('dark_background')

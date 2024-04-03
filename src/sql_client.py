@@ -3,9 +3,9 @@ import sqlite3
 import atexit
 from datetime import datetime
 from typing import List
-
-import config
 import signal
+
+from . import config
 
 
 # TODO: This is messy, should really be using an ORM to manage these

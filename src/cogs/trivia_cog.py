@@ -6,11 +6,11 @@ from discord import NotFound
 from discord.ext import commands, tasks
 from pytz import timezone
 
-import permissions
-import sql_client
-import views
-from discord_cog import adminCommands
-from trivia_handler import Question, get_trivia_questions, Difficulty
+from .. import permissions
+from .. import sql_client
+from .. import views
+from ..cogs.main_cog import adminCommands
+from ..trivia_handler import Question, get_trivia_questions, Difficulty
 
 
 # Daily trivia at 12AM EST
@@ -39,7 +39,7 @@ class TriviaCog(commands.Cog):
         self.populate_question_list()
         self.trivia_loop.start()
 
-    def cog_unload(self):
+    async def cog_unload(self):
         self.trivia_loop.cancel()
 
     def populate_question_list(self) -> bool:
