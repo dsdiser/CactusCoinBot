@@ -6,7 +6,7 @@ After=multi-user.target
 User=pi
 Type=simple
 WorkingDirectory=/home/pi/CactusCoinBot/src/
-ExecStart=/usr/bin/python main.py
+ExecStart=/usr/bin/python -m src.main
 Restart=always
 RestartSec=3
 

@@ -1,10 +1,8 @@
 from typing import Optional
 import discord
 
-from . import bot_helper
-from . import config
-from . import sql_client
-from .trivia_handler import Question, QuestionType
+from src import bot_helper, config, sql_client
+from src.trivia_handler import Question, QuestionType
 
 
 class Dropdown(discord.ui.Select):
@@ -38,7 +36,7 @@ class Dropdown(discord.ui.Select):
         # Select object, and the values attribute gets a list of the user's
         # selected options. We only want the first one.
         if interaction.user.id in self.interacted_users:
-            await interaction.response.send_message(f'You\'ve already given your response.', ephemeral=True)
+            await interaction.response.send_message("You've already given your response.", ephemeral=True)
         else:
             if self.values[0] == self.question.correct_answer:
                 await bot_helper.add_coin(interaction.guild, interaction.user, self.amount)

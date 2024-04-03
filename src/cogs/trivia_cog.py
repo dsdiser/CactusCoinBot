@@ -6,11 +6,9 @@ from discord import NotFound
 from discord.ext import commands, tasks
 from pytz import timezone
 
-from .. import permissions
-from .. import sql_client
-from .. import views
-from ..cogs.main_cog import adminCommands
-from ..trivia_handler import Question, get_trivia_questions, Difficulty
+from src import permissions, sql_client, views
+from src.cogs.main_cog import adminCommands
+from src.trivia_handler import Question, get_trivia_questions, Difficulty
 
 
 # Daily trivia at 12AM EST

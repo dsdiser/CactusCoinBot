@@ -10,20 +10,6 @@ Install python version >= 3.11 and run the following:
 python -m pip install -r requirements.txt
 ```
 
-### Anaconda
-Install the latest version of miniconda [here](https://docs.conda.io/en/latest/miniconda.html).
-Use this command in the directory to create your environment and install packages (note: you may need to add conda-forge as a source in order to install all packages):
-
-```commandline
-conda env create -f environment.yml
-```
-
-or to update the existing installation:
-
-```commandline
-conda env update -f environment.yml --prune
-```
-
 
 ## Commands
 This section is unfinished.
@@ -42,9 +28,9 @@ Secrets are currently stored in config.yml, and should contain the following fie
 
 An example config file is contained in default.config.yml
 
-Start the bot using the following command while in the src directory:
+Start the bot using the following command while in the main directory:
 ```commandline
-python main.py
+python -m src.main
 ```
 
 Alternatively you can use the sample service file and install it using:

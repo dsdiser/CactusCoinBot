@@ -1,10 +1,7 @@
 import discord
 from discord.ext import commands
 
-from .. import bot_helper
-from .. import config
-from .. import permissions
-from .. import sql_client
+from src import bot_helper, config, permissions, sql_client
 
 userCommands = {
     "/help": "Outputs a list of commands.",

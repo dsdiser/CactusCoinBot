@@ -1,5 +1,5 @@
 from peewee import SqliteDatabase, IntegerField, AutoField, DateField, TextField, Model, BooleanField
-from . import config
+import src.config as config
 
 database = SqliteDatabase(config.get_attribute('dbFile'))
 

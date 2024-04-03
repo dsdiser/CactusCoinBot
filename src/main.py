@@ -4,9 +4,9 @@ import logging
 import signal
 import sys
 
-from .cogs.main_cog import BotCog
-from . import config
-from .models import database, TABLES
+from src.cogs.main_cog import BotCog
+import src.config as config
+from src.models import database, TABLES
 
 
 import discord
@@ -15,7 +15,7 @@ from discord.ext import commands
 
 
 async def setup(initiated_bot: commands.Bot):
-    await initiated_bot.add_cog(BotCog())
+    await initiated_bot.add_cog(BotCog(initiated_bot))
     # await bot.add_cog(TriviaCog(bot))
 
 
