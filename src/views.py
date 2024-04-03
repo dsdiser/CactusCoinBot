@@ -114,7 +114,7 @@ class QuestionSubmit(discord.ui.Modal, title='Input your question'):
             incorrect_answers=incorrect_answers
         )
         self.submitted_question = q
-        await interaction.response.send_message(f'Added question to list.', ephemeral=True)
+        await interaction.response.send_message('Added question to list.', ephemeral=True)
         self.stop()
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:

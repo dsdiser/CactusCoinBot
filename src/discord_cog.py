@@ -1,14 +1,10 @@
 import discord
 from discord.ext import commands
-from typing import Literal
 
 import bot_helper
 import config
 import permissions
 import sql_client
-
-
-TIME_PERIOD = Literal["week", "month", "year"]
 
 userCommands = {
     "/help": "Outputs a list of commands.",
@@ -16,29 +12,15 @@ userCommands = {
     "/balance": "Displays a user's coin balance.",
     "/rankings": "Outputs power rankings for the server.",
     "/give": "Gives coin to a specific user, no strings attached.",
-    "/bet": "Starts a bet with another member.",
-    "/end-bet": "Ends an existing bet with another member.",
-    "/cancel-bet": "Cancels an existing bet with another member.",
-    "/list-bets": "Lists all the active bets",
-    "/my-bets": "Lists all your active bets",
-    "/imagine": "Generates an image based off a prompt",
 }
 
 adminCommands = {
     "/admin-help": "!ADMIN ONLY! Outputs a list of admin-specific commands.",
     "/admin-adjust": "!ADMIN ONLY! Adds/subtracts coin from user's wallet.",
     "/clear": "!ADMIN ONLY! Clears a user's wallet of all coin and removes coin role.",
-    "/big-wins": "!ADMIN ONLY! Outputs the greatest gains in the specified time period.",
     "/reset": "!ADMIN ONLY! Resets a user's wallet to the default starting amount",
     "/soft-reset": "!ADMIN ONLY! Resets all users's wallets to the default starting amount",
     "/full-clear": "!DEV ONLY! Clears all users's coins and clears all roles",
-    "/trivia-start": "!ADMIN ONLY! Enables the current channel for trivia questions",
-    "/trivia-end": "!ADMIN ONLY! Disables the current channel for trivia questions",
-    "/trivia-populate": "!ADMIN ONLY! Repopulates the trivia bank",
-    "/trivia-reward": "!ADMIN ONLY! Updates the trivia reward for a successful answer, applies to the next question",
-    "/trivia-reset": "!ADMIN ONLY! Resets today's trivia question and sends a new one.",
-    "/trivia-submit": "!ADMIN ONLY! Provides input for submitting a custom question.",
-    "/trivia-time": "!ADMIN ONLY! Outputs the scheduled time for trivia questions.",
 }
 
 
