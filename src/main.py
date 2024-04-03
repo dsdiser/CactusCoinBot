@@ -6,7 +6,7 @@ import sys
 
 from .cogs.main_cog import BotCog
 from . import config
-from .models import database, Amounts, Bets, Transactions
+from .models import database, TABLES
 
 
 import discord
@@ -25,7 +25,7 @@ async def main(initiated_bot: commands.Bot):
         await setup(initiated_bot)
         await initiated_bot.start(token)
         database.connect()
-        database.create_tables([Amounts, Bets, Transactions])
+        database.create_tables(TABLES)
     else:
         logging.error('No token provided in config.yml, bot not started.')
 
