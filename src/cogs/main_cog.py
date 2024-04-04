@@ -1,7 +1,8 @@
 import discord
 from discord.ext import commands
-
+from peewee import DoesNotExist
 from src import bot_helper, config, permissions, sql_client
+from src.models import Amount
 
 userCommands = {
     "/help": "Outputs a list of commands.",
@@ -86,12 +87,12 @@ class BotCog(commands.Cog):
     async def balance(
         self, interaction: discord.Interaction, user: discord.Member
     ) -> None:
-        balance = sql_client.get_coin(user.id)
-        if balance:
+        try:
+            balance = Amount.get_by_id(user.id).coin
             await interaction.response.send_message(
                 f"{user.display_name}'s balance: {str(balance)}.", ephemeral=True
             )
-        else:
+        except DoesNotExist:
             await interaction.response.send_message(
                 f"{user.display_name}'s has no balance.", ephemeral=True
             )
@@ -116,7 +117,7 @@ class BotCog(commands.Cog):
     async def give(
         self, interaction: discord.Interaction, user: discord.Member, amount: int
     ) -> None:
-        author_coin = sql_client.get_coin(interaction.user.id)
+        author_coin = Amount.get_by_id(user.id).coin
         if author_coin - amount < config.get_attribute("debtLimit"):
             await interaction.response.send_message(
                 f'You don\'t have this much coin to give {config.get_attribute("sadEmote", "")}',

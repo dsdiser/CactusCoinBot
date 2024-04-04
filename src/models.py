@@ -28,7 +28,6 @@ class Transaction(BaseModel):
     id = AutoField()
     coin = IntegerField(null=True)
     date = DateField(null=True)
-    memo = TextField(null=True)
 
     class Meta:
         table_name = "TRANSACTIONS"

@@ -137,3 +137,5 @@ config.yml
 planning.txt
 # folder for image and db storage
 tmp/*
+
+.vscode/
