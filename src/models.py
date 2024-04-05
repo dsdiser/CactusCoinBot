@@ -1,3 +1,4 @@
+from datetime import datetime
 from peewee import SqliteDatabase, IntegerField, AutoField, DateField, TextField, Model, BooleanField
 import src.config as config
 
@@ -38,7 +39,7 @@ class FoodAnswer(BaseModel):
     """Tracking user's answers """
     user_id = IntegerField()
     barcode = IntegerField()
-    date = DateField()
+    date = DateField(default=datetime.utcnow())
     answer = TextField()
     is_correct = BooleanField()
 

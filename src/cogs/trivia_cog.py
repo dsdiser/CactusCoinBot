@@ -8,7 +8,7 @@ from pytz import timezone
 
 from src import permissions, sql_client, views
 from src.cogs.main_cog import adminCommands
-from src.trivia_handler import Question, get_trivia_questions, Difficulty
+from src.api_handlers.trivia_handler import Question, get_trivia_questions, Difficulty
 
 
 # Daily trivia at 12AM EST

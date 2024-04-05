@@ -7,3 +7,4 @@ pyspellchecker
 pytz
 requests
 peewee
+openfoodfacts

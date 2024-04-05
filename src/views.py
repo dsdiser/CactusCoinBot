@@ -2,7 +2,7 @@ from typing import Optional
 import discord
 
 from src import bot_helper, config, sql_client
-from src.trivia_handler import Question, QuestionType
+from src.api_handlers.trivia_handler import Question, QuestionType
 
 
 class Dropdown(discord.ui.Select):
