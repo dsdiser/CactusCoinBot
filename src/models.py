@@ -1,5 +1,5 @@
 from datetime import datetime
-from peewee import SqliteDatabase, IntegerField, AutoField, DateField, TextField, Model, BooleanField
+from peewee import SqliteDatabase, IntegerField, AutoField, DateField, TextField, Model, BooleanField, CharField, ForeignKeyField
 import src.config as config
 
 database = SqliteDatabase(config.get_attribute('dbFile'))
@@ -46,6 +46,18 @@ class FoodAnswer(BaseModel):
     class Meta:
         table_name = "FOOD_ANSWER"
         primary_key = False
+
+class Country(BaseModel):
+    name = CharField(max_length=255, unique=True)
+
+class Food(BaseModel):
+    barcode = IntegerField()
+    name = TextField()
+    image_url = TextField()
+    countries = ForeignKeyField(Country)
+    used = BooleanField() # Whether the food has been used for a trivia
+
+
 
 TABLES = [Amount, Transaction, FoodAnswer]
 
