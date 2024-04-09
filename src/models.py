@@ -38,26 +38,32 @@ class Transaction(BaseModel):
 class FoodAnswer(BaseModel):
     """Tracking user's answers """
     user_id = IntegerField()
-    barcode = IntegerField()
+    barcode = IntegerField(primary_key=True)
     date = DateField(default=datetime.utcnow())
     answer = TextField()
     is_correct = BooleanField()
 
     class Meta:
         table_name = "FOOD_ANSWER"
-        primary_key = False
+
 
 class Country(BaseModel):
-    name = CharField(max_length=255, unique=True)
+    barcode = IntegerField(primary_key=True)
+    name = CharField(max_length=50, unique=True)
+
 
 class Food(BaseModel):
-    barcode = IntegerField()
+    barcode = IntegerField(primary_key=True)
     name = TextField()
     image_url = TextField()
-    countries = ForeignKeyField(Country)
+    countries = ForeignKeyField(Country, backref="FOOD")
+    correct_countries = ForeignKeyField(Country, backref="FOOD")
     used = BooleanField() # Whether the food has been used for a trivia
 
+    class Meta:
+        table_name = "FOOD"
 
 
-TABLES = [Amount, Transaction, FoodAnswer]
+
+TABLES = [Amount, Transaction, FoodAnswer, Food, Country]
 

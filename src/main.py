@@ -4,6 +4,7 @@ import logging
 import signal
 import sys
 
+from src.api_handlers.food_handler import generate_food_questions
 from src.cogs.main_cog import BotCog
 import src.config as config
 from src.models import database, TABLES
@@ -21,11 +22,12 @@ async def setup(initiated_bot: commands.Bot):
 
 async def main(initiated_bot: commands.Bot):
     token = config.get_attribute('token', None)
+    database.connect()
+    database.create_tables(TABLES)
+    generate_food_questions()
     if token:
         await setup(initiated_bot)
         await initiated_bot.start(token)
-        database.connect()
-        database.create_tables(TABLES)
     else:
         logging.error('No token provided in config.yml, bot not started.')
 
