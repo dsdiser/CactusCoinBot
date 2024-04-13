@@ -2,7 +2,7 @@ from datetime import datetime
 from peewee import SqliteDatabase, IntegerField, AutoField, DateField, TextField, Model, BooleanField, CharField, ForeignKeyField
 import src.config as config
 
-database = SqliteDatabase(config.get_attribute('dbFile'))
+database = SqliteDatabase(config.get_attribute('dbFile'), pragmas={'foreign_keys': 1})
 
 
 class UnknownField(object):
@@ -47,23 +47,23 @@ class FoodAnswer(BaseModel):
         table_name = "FOOD_ANSWER"
 
 
-class Country(BaseModel):
-    barcode = IntegerField(primary_key=True)
-    name = CharField(max_length=50, unique=True)
-
-
 class Food(BaseModel):
     barcode = IntegerField(primary_key=True)
     name = TextField()
     image_url = TextField()
-    countries = ForeignKeyField(Country, backref="FOOD")
-    correct_countries = ForeignKeyField(Country, backref="FOOD")
     used = BooleanField() # Whether the food has been used for a trivia
 
     class Meta:
         table_name = "FOOD"
+    
 
+class CountryAnswer(BaseModel):
+    barcode = ForeignKeyField(Food, backref='Countries')
+    correct = BooleanField()
+    name = CharField(max_length=50)
 
+    class Meta:
+        table_name = "COUNTRY_ANSWER"
 
-TABLES = [Amount, Transaction, FoodAnswer, Food, Country]
+TABLES = [Amount, Transaction, FoodAnswer, Food, CountryAnswer]
 
