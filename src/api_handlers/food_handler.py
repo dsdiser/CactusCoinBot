@@ -62,7 +62,7 @@ def generate_food_questions():
                 # Create set of countries that could be used for wrong answers
                 correct_countries_src = correct_countries[idx]
                 wrong_countries = all_countries.copy().difference(correct_countries_src)
-                needed_num_wrong_answers = TOTAL_NUM_ANSWERS - len(correct_countries_src)
+                needed_num_wrong_answers = max(0, TOTAL_NUM_ANSWERS - len(correct_countries_src))
 
                 num_wrong_answers = random.randint(needed_num_wrong_answers, MAX_NUM_WRONG_ANSWERS)
                 wrong_answers = random.sample(wrong_countries, k=num_wrong_answers)

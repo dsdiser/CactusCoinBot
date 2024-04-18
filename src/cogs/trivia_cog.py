@@ -170,6 +170,8 @@ class TriviaCog(commands.Cog):
         self, send_question: bool = True, show_answer: bool = True
     ) -> None:
         channels = sql_client.get_channels()
+        if not channels:
+            return
         for channel_id, message_id, reward in channels:
             channel = await self.bot.fetch_channel(channel_id)
             # Handle previous day's message

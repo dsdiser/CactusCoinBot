@@ -58,12 +58,15 @@ class Food(BaseModel):
     
 
 class CountryAnswer(BaseModel):
-    barcode = ForeignKeyField(Food, backref='Countries')
+    barcode = ForeignKeyField(Food, backref='countries')
     correct = BooleanField()
     name = CharField(max_length=50)
 
     class Meta:
         table_name = "COUNTRY_ANSWER"
 
-TABLES = [Amount, Transaction, FoodAnswer, Food, CountryAnswer]
+class FoodChannel(BaseModel):
+    id = IntegerField(primary_key=True)
+
+TABLES = [Amount, Transaction, FoodAnswer, Food, CountryAnswer, FoodChannel]
 
