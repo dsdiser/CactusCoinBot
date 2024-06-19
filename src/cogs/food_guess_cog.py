@@ -19,6 +19,7 @@ midnight = est.localize(
     datetime.datetime.combine(today, datetime.time(0, 0)), is_dst=None
 )
 food_guess_time_start = datetime.time(hour=0, tzinfo=est)
+PROMPT = "Today's daily food guessing question! Guess which countries this food is located in!\n"
 
 class FoodGuessCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -90,3 +91,5 @@ class FoodGuessCog(commands.Cog):
         # craft the message to send to the channel
 
         # after it is sent, mark the food item as used
+        unused_food.used = True
+        unused_food.save()

@@ -1,3 +1,4 @@
+from typing import Optional
 import yaml
 import os
 
@@ -8,5 +9,5 @@ with open('./config.yml', encoding='utf-8') as f:
     configMap = yaml.safe_load(f)
 
 
-def get_attribute(field, default='INVALIDKEY'):
+def get_attribute(field, default: Optional[str]='INVALIDKEY'):
     return configMap.get(field, default)

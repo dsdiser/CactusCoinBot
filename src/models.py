@@ -68,5 +68,12 @@ class CountryAnswer(BaseModel):
 class FoodChannel(BaseModel):
     id = IntegerField(primary_key=True)
 
-TABLES = [Amount, Transaction, FoodAnswer, Food, CountryAnswer, FoodChannel]
+class ChallengeChannel(BaseModel):
+    id = IntegerField(primary_key=True)
+
+class Game(BaseModel):
+    id = AutoField()
+    name = CharField()
+
+TABLES = [Amount, Transaction, FoodAnswer, Food, CountryAnswer, FoodChannel, ChallengeChannel, Game]
 

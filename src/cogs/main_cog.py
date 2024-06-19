@@ -19,6 +19,9 @@ adminCommands = {
     "/reset": "!ADMIN ONLY! Resets a user's wallet to the default starting amount",
     "/soft-reset": "!ADMIN ONLY! Resets all users's wallets to the default starting amount",
     "/full-clear": "!DEV ONLY! Clears all users's coins and clears all roles",
+    "/challenges-start": "!ADMIN ONLY! Enables challenges for the channel",
+    "/challenges-end": "!ADMIN ONLY! Disables challenges for the channel",
+    "/add-challenge": "!ADMIN ONLY! Add a challenge to the list of possible challenges",
 }
 
 
