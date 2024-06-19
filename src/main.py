@@ -6,6 +6,7 @@ import sys
 
 from src.api_handlers.food_handler import generate_food_questions
 from src.cogs.main_cog import BotCog
+from src.cogs.challenges_cog import ChallengesCog
 import src.config as config
 from src.models import database, TABLES
 
@@ -17,6 +18,7 @@ from discord.ext import commands
 
 async def setup(initiated_bot: commands.Bot):
     await initiated_bot.add_cog(BotCog(initiated_bot))
+    await initiated_bot.add_cog(ChallengesCog(initiated_bot))
     # await bot.add_cog(TriviaCog(bot))
 
 
